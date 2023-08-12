@@ -9,7 +9,7 @@ from config import cfg, process_args
 from dataset import make_dataset, make_data_loader, process_dataset, collate, make_split
 from metric import make_metric, make_logger
 from model import make_model, make_optimizer, make_scheduler
-from dist import make_controller
+# from dist import make_controller
 from module import save, to_device, process_control, resume, makedir_exist_ok
 
 cudnn.benchmark = True

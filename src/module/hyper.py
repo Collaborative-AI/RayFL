@@ -16,8 +16,6 @@ def process_control():
     cfg['data_shape'] = data_shape[cfg['data_name']]
     cfg['model_name'] = cfg['control']['model_name']
     model_name = cfg['model_name']
-    print(cfg)
-    exit()
     cfg[model_name]['shuffle'] = {'train': True, 'test': False}
     cfg[model_name]['optimizer_name'] = 'SGD'
     cfg[model_name]['lr'] = 1e-1
