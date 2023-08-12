@@ -3,6 +3,14 @@
 control:
   data_name: MNIST
   model_name: linear
+  data_mode:
+      num_split: 100
+      split_mode: horiz
+      stat_mode: noniid-d-0.3
+  comm_mode:
+      agg_mode: sync
+      active_ratio: 0.1
+      local_update: 5
 # experiment
 pin_memory: True
 num_workers: 0

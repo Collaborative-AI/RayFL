@@ -1,3 +1,4 @@
+import copy
 import dataset
 import numpy as np
 import os
@@ -105,3 +106,128 @@ def process_dataset(dataset):
     cfg['data_size'] = {k: len(processed_dataset[k]) for k in processed_dataset}
     cfg['target_size'] = processed_dataset['train'].target_size
     return processed_dataset
+
+
+def make_split(dataset, num_split, split_mode, **kwargs):
+    if split_mode == 'horiz':
+        stat_mode = kwargs['stat_mode']
+        if stat_mode == 'iid':
+            data_split, target_split = iid(dataset, num_split)
+        elif 'noniid' in stat_mode:
+            data_split, target_split = noniid(dataset, num_split, stat_mode)
+        else:
+            raise ValueError('Not valid data split mode')
+    else:
+        raise ValueError('Not valid data split mode')
+    split = {'data': data_split, 'target': target_split}
+    return split
+
+
+def split_dataset(dataset, idx):
+    separated_dataset = copy.deepcopy(dataset)
+    separated_dataset.data = [dataset.data[s] for s in idx]
+    separated_dataset.target = [dataset.target[s] for s in idx]
+    separated_dataset.id = list(range(len(separated_dataset.data)))
+    return separated_dataset
+
+
+def iid(dataset, num_splits):
+    data_split = [{k: None for k in dataset} for _ in range(num_splits)]
+    target_split = [{k: None for k in dataset} for _ in range(num_splits)]
+    for k in dataset:
+        idx_k = torch.randperm(len(dataset[k]))
+        data_split_k = torch.tensor_split(idx_k, num_splits)
+        for i in range(num_splits):
+            data_split[i][k] = data_split_k[i].tolist()
+            target_i_k = torch.tensor(dataset[k].target)[data_split[i][k]]
+            if k == 'train':
+                unique_target_i_k, num_target_i = torch.unique(target_i_k, sorted=True, return_counts=True)
+                target_split[i][k] = {unique_target_i_k[m].item(): num_target_i[m].item()
+                                      for m in range(len(unique_target_i_k))}
+            else:
+                target_split[i][k] = {target: int((target_i_k == target).sum()) for target in target_split[i]['train']}
+    return data_split, target_split
+
+
+def noniid(dataset, num_splits, stat_mode):
+    data_split_mode_list = stat_mode.split('-')
+    data_split_mode_tag = data_split_mode_list[-2]
+    target_size = len(torch.unique(torch.tensor(dataset['train'].target)))
+    if data_split_mode_tag == 'l':
+        data_split = [{k: [] for k in dataset} for _ in range(num_splits)]
+        shard_per_user = int(data_split_mode_list[-1])
+        shard_per_class = int(np.ceil(shard_per_user * num_splits / target_size))
+        target_idx_split = [{k: None for k in dataset} for _ in range(target_size)]
+        for k in dataset:
+            target = torch.tensor(dataset[k].target)
+            for target_i in range(target_size):
+                target_idx = torch.where(target == target_i)[0]
+                num_leftover = len(target_idx) % shard_per_class
+                leftover = target_idx[-num_leftover:] if num_leftover > 0 else []
+                target_idx = target_idx[:-num_leftover] if num_leftover > 0 else target_idx
+                target_idx = target_idx.reshape((shard_per_class, -1)).tolist()
+                for i, leftover_target_idx in enumerate(leftover):
+                    target_idx[i].append(leftover_target_idx.item())
+                target_idx_split[target_i][k] = target_idx
+        target_split_key = []
+        for i in range(shard_per_class):
+            target_split_key.append(torch.randperm(target_size))
+        target_split_key = torch.cat(target_split_key, dim=0)
+        target_split = [{k: None for k in dataset} for _ in range(num_splits)]
+        exact_size = shard_per_user * num_splits
+        exact_target_split, leftover_target_split = target_split_key[:exact_size].tolist(), \
+            {k: target_split_key[exact_size:].tolist() for k in dataset}
+        for i in range(0, exact_size, shard_per_user):
+            target_split_i = exact_target_split[i:i + shard_per_user]
+            for j in range(len(target_split_i)):
+                target_i_j = target_split_i[j]
+                for k in dataset:
+                    idx = torch.randint(len(target_idx_split[target_i_j][k]), (1,)).item()
+                    data_split[i // shard_per_user][k].extend(target_idx_split[target_i_j][k].pop(idx))
+                    if target_i_j in leftover_target_split[k]:
+                        idx = torch.randint(len(target_idx_split[target_i_j][k]), (1,)).item()
+                        data_split[i // shard_per_user][k].extend(target_idx_split[target_i_j][k].pop(idx))
+                        leftover_idx = leftover_target_split[k].index(target_i_j)
+                        leftover_target_split[k].pop(leftover_idx)
+                    target_i_j_k = torch.tensor(dataset[k].target)[data_split[i // shard_per_user][k]]
+                    if k == 'train':
+                        unique_target_i_k, num_target_i = torch.unique(target_i_j_k, sorted=True, return_counts=True)
+                        target_split[i // shard_per_user][k] = {unique_target_i_k[m].item(): num_target_i[m].item()
+                                                                for m in range(len(unique_target_i_k))}
+                    else:
+                        target_split[i // shard_per_user][k] = {x: int((target_i_j_k == x).sum()) for x in
+                                                                target_split[i // shard_per_user]['train']}
+    elif data_split_mode_tag == 'd':
+        data_split, target_split = None, None
+        min_size = 0
+        required_min_size = 10
+        while min_size < required_min_size:
+            beta = float(data_split_mode_list[-1])
+            dir = torch.distributions.dirichlet.Dirichlet(torch.tensor(beta).repeat(num_splits))
+            data_split = [{k: [] for k in dataset} for _ in range(num_splits)]
+            for target_i in range(target_size):
+                proportions = dir.sample()
+                for k in dataset:
+                    target = torch.tensor(dataset[k].target)
+                    target_idx = torch.where(target == target_i)[0]
+                    proportions = torch.tensor([p * (len(data_split_idx[k]) < (len(target) / num_splits))
+                                                for p, data_split_idx in zip(proportions, data_split)])
+                    proportions = proportions / proportions.sum()
+                    split_idx = (torch.cumsum(proportions, dim=-1) * len(target_idx)).long().tolist()[:-1]
+                    split_idx = torch.tensor_split(target_idx, split_idx)
+                    for i in range(len(split_idx)):
+                        data_split[i][k].extend(split_idx[i].tolist())
+            min_size = min([len(data_split[i]['train']) for i in range(len(data_split))])
+            target_split = [{k: None for k in dataset} for _ in range(num_splits)]
+            for i in range(num_splits):
+                for k in dataset:
+                    target_i_k = torch.tensor(dataset[k].target)[data_split[i][k]]
+                    if k == 'train':
+                        unique_target_i_k, num_target_i = torch.unique(target_i_k, sorted=True, return_counts=True)
+                        target_split[i][k] = {unique_target_i_k[m].item(): num_target_i[m].item() for m in
+                                              range(len(unique_target_i_k))}
+                    else:
+                        target_split[i][k] = {x: (target_i_k == x).sum().item() for x in target_split[i]['train']}
+    else:
+        raise ValueError('Not valid data split mode tag')
+    return data_split, target_split
