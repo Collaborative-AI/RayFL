@@ -150,7 +150,7 @@ def iid(dataset, num_splits):
 
 
 def noniid(dataset, num_splits, stat_mode):
-    data_split_mode_list = stat_mode.split('-')
+    data_split_mode_list = stat_mode.split('~')
     data_split_mode_tag = data_split_mode_list[-2]
     target_size = len(torch.unique(torch.tensor(dataset['train'].target)))
     if data_split_mode_tag == 'l':

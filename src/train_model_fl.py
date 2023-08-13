@@ -6,10 +6,10 @@ import time
 import torch
 import torch.backends.cudnn as cudnn
 from config import cfg, process_args
-from dataset import make_dataset, make_data_loader, process_dataset, collate, split_dataset
+from dataset import make_dataset, make_data_loader, process_dataset, collate, make_split
 from metric import make_metric, make_logger
 from model import make_model, make_optimizer, make_scheduler
-from dist import make_controller
+# from dist import make_controller
 from module import save, to_device, process_control, resume, makedir_exist_ok
 
 cudnn.benchmark = True
@@ -43,7 +43,8 @@ def runExperiment():
     dataset = make_dataset(cfg['data_name'])
     dataset = process_dataset(dataset)
     model = make_model(cfg['model_name'])
-    data_split, _ = split_dataset(dataset, cfg['num_clients'], cfg['data_split_mode'])
+    data_split, _ = make_split(dataset, cfg['data_mode']['num_split'], cfg['data_mode']['split_mode'],
+                               stat_mode=cfg['data_mode']['stat_mode'])
     data_loader = make_data_loader(dataset, cfg['model_name'])
     metric = make_metric({'train': ['Loss'], 'test': ['Loss']})
     logger = make_logger(os.path.join('output', 'runs', 'train_{}'.format(cfg['model_tag'])))
@@ -62,7 +63,7 @@ def runExperiment():
         scheduler.load_state_dict(result['scheduler_state_dict'])
         metric.load_state_dict(result['metric_state_dict'])
         logger.load_state_dict(result['logger_state_dict'])
-    controller = make_controller(model)
+    controller = make_controller(model, data_split)
     for epoch in range(cfg['epoch'], cfg[cfg['model_name']]['num_epochs'] + 1):
         cfg['epoch'] = epoch
         controller.train(dataset['train'], optimizer, metric, logger)

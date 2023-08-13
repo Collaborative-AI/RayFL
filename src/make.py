@@ -47,9 +47,17 @@ def main():
     filename = '{}_{}'.format(run, mode)
     if mode == 'base':
         script_name = [['{}_model.py'.format(run)]]
-        data_names = ['MNIST', 'CIFAR10']
-        model_names = ['linear', 'mlp', 'cnn', 'resnet18']
-        control_name = [[data_names, model_names]]
+        data_name = ['MNIST', 'CIFAR10']
+        model_name = ['linear', 'mlp', 'cnn', 'resnet18']
+        control_name = [[data_name, model_name]]
+        controls = make_controls(script_name, init_seeds, world_size, num_experiments, resume_mode, control_name)
+    elif mode == 'fl':
+        script_name = [['{}_model_fl.py'.format(run)]]
+        data_name = ['MNIST', 'CIFAR10']
+        model_name = ['linear', 'mlp', 'cnn', 'resnet18']
+        data_mode = ['100-horiz-iid', '100-horiz-noniid~c~2', '100-horiz-noniid~d~0.1', '100-horiz-noniid~d~0.3']
+        comm_mode = ['sync-0.1-5']
+        control_name = [[data_name, model_name, data_mode, comm_mode]]
         controls = make_controls(script_name, init_seeds, world_size, num_experiments, resume_mode, control_name)
     else:
         raise ValueError('Not valid mode')
