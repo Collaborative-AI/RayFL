@@ -124,11 +124,11 @@ def make_split(dataset, num_split, split_mode, **kwargs):
 
 
 def split_dataset(dataset, idx):
-    separated_dataset = copy.deepcopy(dataset)
-    separated_dataset.data = [dataset.data[s] for s in idx]
-    separated_dataset.target = [dataset.target[s] for s in idx]
-    separated_dataset.id = list(range(len(separated_dataset.data)))
-    return separated_dataset
+    dataset_ = copy.deepcopy(dataset)
+    dataset_.data = [dataset.data[s] for s in idx]
+    dataset_.target = [dataset.target[s] for s in idx]
+    dataset_.id = list(range(len(dataset_.data)))
+    return dataset_
 
 
 def iid(dataset, num_splits):
