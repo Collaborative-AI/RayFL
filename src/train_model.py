@@ -22,8 +22,8 @@ process_args(args)
 
 def main():
     process_control()
-    seeds = list(range(cfg['init_seed'], cfg['init_seed'] + cfg['num_experiments']))
-    for i in range(cfg['num_experiments']):
+    seeds = list(range(cfg['init_seed'], cfg['init_seed'] + cfg['num_experiment']))
+    for i in range(cfg['num_experiment']):
         model_tag_list = [str(seeds[i]), cfg['control_name']]
         cfg['model_tag'] = '_'.join([x for x in model_tag_list if x])
         print('Experiment: {}'.format(cfg['model_tag']))
@@ -42,6 +42,7 @@ def runExperiment():
     dataset = make_dataset(cfg['data_name'])
     dataset = process_dataset(dataset)
     model = make_model(cfg['model_name'])
+    model = model.to(cfg['device'])
     result = resume(os.path.join(checkpoint_path, 'model'), resume_mode=cfg['resume_mode'])
     cfg['epoch'] = 1
     optimizer = make_optimizer(model.parameters(), cfg['model_name'])

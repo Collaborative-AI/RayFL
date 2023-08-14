@@ -8,7 +8,6 @@ from config import cfg
 
 def make_model(model_name):
     model = eval('model.{}()'.format(model_name))
-    model = model.to(cfg['device'])
     return model
 
 

@@ -23,8 +23,8 @@ process_args(args)
 
 def main():
     process_control()
-    seeds = list(range(cfg['init_seed'], cfg['init_seed'] + cfg['num_experiments']))
-    for i in range(cfg['num_experiments']):
+    seeds = list(range(cfg['init_seed'], cfg['init_seed'] + cfg['num_experiment']))
+    for i in range(cfg['num_experiment']):
         model_tag_list = [str(seeds[i]), cfg['control_name']]
         cfg['model_tag'] = '_'.join([x for x in model_tag_list if x])
         print('Experiment: {}'.format(cfg['model_tag']))
@@ -43,33 +43,37 @@ def runExperiment():
     dataset = make_dataset(cfg['data_name'])
     dataset = process_dataset(dataset)
     model = make_model(cfg['model_name'])
-    data_split, _ = make_split(dataset, cfg['data_mode']['num_split'], cfg['data_mode']['split_mode'],
+    data_split = make_split(dataset, cfg['data_mode']['num_split'], cfg['data_mode']['split_mode'],
                                stat_mode=cfg['data_mode']['stat_mode'])
     result = resume(os.path.join(checkpoint_path, 'model'), resume_mode=cfg['resume_mode'])
     cfg['epoch'] = 1
-    optimizer = make_optimizer(model.parameters(), cfg['model_name'])
-    scheduler = make_scheduler(optimizer, cfg['model_name'])
+    optimizer = {'local': make_optimizer(model.parameters(), 'local'),
+                 'global': make_optimizer(model.parameters(), 'global')}
+    scheduler = {'local': make_scheduler(optimizer['local'], 'local'),
+                 'global': make_scheduler(optimizer['global'], 'global')}
     metric = make_metric({'train': ['Loss'], 'test': ['Loss']})
     logger = make_logger(os.path.join('output', 'runs', 'train_{}'.format(cfg['model_tag'])))
     if result is not None:
         cfg['epoch'] = result['epoch']
         model.load_state_dict(result['model_state_dict'])
-        optimizer.load_state_dict(result['optimizer_state_dict'])
-        scheduler.load_state_dict(result['scheduler_state_dict'])
+        optimizer['local'].load_state_dict(result['optimizer_state_dict']['local'])
+        optimizer['global'].load_state_dict(result['optimizer_state_dict']['global'])
+        scheduler['local'].load_state_dict(result['scheduler_state_dict']['local'])
+        scheduler['global'].load_state_dict(result['scheduler_state_dict']['global'])
         metric.load_state_dict(result['metric_state_dict'])
         logger.load_state_dict(result['logger_state_dict'])
     controller = make_controller(data_split, model, optimizer, scheduler, metric, logger)
     controller.make_worker(dataset)
     for epoch in range(cfg['epoch'], cfg[cfg['model_name']]['num_epochs'] + 1):
         cfg['epoch'] = epoch
-        controller.train(optimizer, metric, logger)
+        controller.train()
+        controller.test()
         controller.update()
-        controller.test(dataset['test'], optimizer, metric, logger)
-        result = {'cfg': cfg, 'epoch': cfg['epoch'] + 1, 'model_state_dict': controller.model_state_dict,
-                  'optimizer_state_dict': controller.optimizer_state_dict,
-                  'scheduler_state_dict': controller.scheduler_state_dict,
-                  'metric_state_dict': controller.metric_state_dict,
-                  'logger_state_dict': controller.logger_state_dict}
+        result = {'cfg': cfg, 'epoch': cfg['epoch'] + 1, 'model_state_dict': controller.model_state_dict(),
+                  'optimizer_state_dict': controller.optimizer_state_dict(),
+                  'scheduler_state_dict': controller.scheduler_state_dict(),
+                  'metric_state_dict': controller.metric_state_dict(),
+                  'logger_state_dict': controller.logger_state_dict()}
         save(result, os.path.join(checkpoint_path, 'model'))
         if metric.compare(logger.mean['test/{}'.format(metric.pivot_name)]):
             metric.update(logger.mean['test/{}'.format(metric.pivot_name)])

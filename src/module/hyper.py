@@ -40,6 +40,7 @@ def process_control():
         cfg['local']['nesterov'] = True
         cfg['local']['num_epochs'] = 5
         cfg['local']['batch_size'] = {'train': 10, 'test': 500}
+        cfg['local']['scheduler_name'] = 'CosineAnnealingLR'
         cfg['global'] = {}
         cfg['global']['shuffle'] = {'train': True, 'test': False}
         cfg['global']['optimizer_name'] = 'SGD'
@@ -47,7 +48,7 @@ def process_control():
         cfg['global']['momentum'] = 0
         cfg['global']['weight_decay'] = 0
         cfg['global']['nesterov'] = False
-        cfg['global']['scheduler_name'] = 'CosineAnnealingLR'
         cfg['global']['num_epochs'] = 800
         cfg['global']['batch_size'] = {'train': 250, 'test': 500}
+        cfg['global']['scheduler_name'] = 'None'
     return
