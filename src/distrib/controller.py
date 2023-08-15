@@ -3,7 +3,7 @@ import datetime
 import numpy as np
 import time
 import torch
-import torch.nn.functional as F
+import torch.nn as nn
 from config import cfg
 from dataset import make_data_loader, collate, split_dataset
 from model import make_optimizer
@@ -46,6 +46,7 @@ class Controller:
         return
 
     def test(self):
+        self.worker['server'].make_batchnorm()
         self.worker['server'].test(self.worker['client'])
         return
 
@@ -130,6 +131,28 @@ class Server:
                 print(self.logger.write('train', self.metric.metric_name['train']))
         return
 
+    def make_batchnorm(self):
+        def make_batchnorm_(m, momentum, track_running_stats):
+            if isinstance(m, (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d)):
+                m.momentum = momentum
+                m.track_running_stats = track_running_stats
+                m.register_buffer('running_mean', torch.zeros(m.num_features, device=m.weight.device))
+                m.register_buffer('running_var', torch.ones(m.num_features, device=m.weight.device))
+                m.register_buffer('num_batches_tracked', torch.tensor(0, dtype=torch.long, device=m.weight.device))
+            return m
+
+        with torch.no_grad():
+            model = copy.deepcopy(self.model)
+            model = model.to(cfg['device'])
+            model.apply(lambda m: make_batchnorm_(m, momentum=None, track_running_stats=True))
+            model.train(True)
+            for i, input in enumerate(self.data_loader['test']):
+                input = collate(input)
+                input = to_device(input, cfg['device'])
+                model(input)
+        self.model.load_state_dict(model.state_dict())
+        return
+
     def test(self, client):
         with torch.no_grad():
             model = copy.deepcopy(self.model)
@@ -198,11 +221,6 @@ class Client:
         return
 
 
-def make_controller(data_split, model, optimizer, scheduler, metric, logger):
-    controller = Controller(data_split, model, optimizer, scheduler, metric, logger)
-    return controller
-
-
 def make_state_dict(input):
     state_dict = input.state_dict()
     state_dict_ = {}
@@ -212,3 +230,8 @@ def make_state_dict(input):
         else:
             state_dict_[k] = copy.deepcopy(state_dict[k])
     return state_dict_
+
+
+def make_controller(data_split, model, optimizer, scheduler, metric, logger):
+    controller = Controller(data_split, model, optimizer, scheduler, metric, logger)
+    return controller
