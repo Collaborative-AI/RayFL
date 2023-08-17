@@ -153,7 +153,7 @@ def noniid(dataset, num_splits, stat_mode):
     data_split_mode_list = stat_mode.split('~')
     data_split_mode_tag = data_split_mode_list[-2]
     target_size = len(torch.unique(torch.tensor(dataset['train'].target)))
-    if data_split_mode_tag == 'l':
+    if data_split_mode_tag == 'c':
         data_split = [{k: [] for k in dataset} for _ in range(num_splits)]
         shard_per_user = int(data_split_mode_list[-1])
         shard_per_class = int(np.ceil(shard_per_user * num_splits / target_size))
