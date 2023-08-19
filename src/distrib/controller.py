@@ -113,8 +113,7 @@ class Server:
                 client[i].active = False
         for i in range(num_active_clients):
             m = active_client_idx[i]
-            client[m].train(copy.deepcopy(self.model), copy.deepcopy(self.optimizer['local']),
-                            self.metric, self.logger)
+            client[m].train(copy.deepcopy(self.model), lr, self.metric, self.logger)
             if i % int((num_active_clients * cfg['log_interval']) + 1) == 0:
                 _time = (time.time() - start_time) / (i + 1)
                 epoch_finished_time = datetime.timedelta(seconds=_time * (num_active_clients - i - 1))
@@ -183,13 +182,13 @@ class Client:
         self.optimizer_state_dict = make_state_dict(optimizer)
         self.active = False
 
-    def train(self, model, optimizer, metric, logger):
+    def train(self, model, lr, metric, logger):
         model = model.to(cfg['device'])
-        self.optimizer_state_dict['param_groups'][0]['lr'] = optimizer.state_dict()['param_groups'][0]['lr']
+        self.optimizer_state_dict['param_groups'][0]['lr'] = lr
         optimizer = make_optimizer(model.parameters(), 'local')
         optimizer.load_state_dict(self.optimizer_state_dict)
         model.train(True)
-        for epoch in range(1, cfg['local']['num_epochs'] + 1):
+        for epoch in range(1, cfg['comm_mode']['local_update'] + 1):
             for i, input in enumerate(self.data_loader['train']):
                 input = collate(input)
                 input_size = input['data'].size(0)

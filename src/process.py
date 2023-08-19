@@ -38,13 +38,20 @@ def make_all_controls(mode):
         model_names = ['linear', 'mlp', 'cnn', 'resnet18']
         control_name = [[data_names, model_names]]
         controls = make_control(control_name)
+    elif mode == 'fl':
+        data_name = ['MNIST', 'CIFAR10']
+        model_name = ['linear', 'mlp', 'cnn', 'resnet18']
+        data_mode = ['100-horiz-iid', '100-horiz-noniid~c~2', '100-horiz-noniid~d~0.1', '100-horiz-noniid~d~0.3']
+        comm_mode = ['sync-0.1-5']
+        control_name = [[data_name, model_name, data_mode, comm_mode]]
+        controls = make_control(control_name)
     else:
         raise ValueError('Not valid mode')
     return controls
 
 
 def main():
-    modes = ['base']
+    modes = ['fl']
     controls = []
     for mode in modes:
         controls += make_all_controls(mode)
@@ -177,7 +184,7 @@ def make_vis_history(df_history):
             y = df_history[df_name].iloc[0].to_numpy()
             y_err = df_history[df_name_std].iloc[0].to_numpy()
             x = np.arange(len(y))
-            xlabel = 'Epoch'
+            xlabel = 'Communication Rounds'
             pivot = model_name
             ylabel = metric_name
             ax_1.plot(x, y, label=label_dict[pivot], color=color_dict[pivot],

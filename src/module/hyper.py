@@ -38,7 +38,7 @@ def process_control():
         cfg['local']['momentum'] = 0.9
         cfg['local']['weight_decay'] = 5e-4
         cfg['local']['nesterov'] = True
-        cfg['local']['num_epochs'] = 5
+        cfg['local']['num_epochs'] = 800
         cfg['local']['batch_size'] = {'train': 10, 'test': 500}
         cfg['local']['scheduler_name'] = 'CosineAnnealingLR'
         cfg['global'] = {}
