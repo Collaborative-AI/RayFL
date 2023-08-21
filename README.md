@@ -46,13 +46,13 @@ See `requirements.txt`
 </p>
 
 
-- Learning curves of CIFAR10, $100$ clients, horizontally distributed, Non-IID ($Dir(0.1)$), $0.1$ activate ratio, $5$ local epochs
+- Learning curves of CIFAR10, $100$ clients, horizontally distributed, Non-IID ( $Dir(0.1)$ ), $0.1$ activate ratio, $5$ local epochs
 <p align="center">
 <img src="/asset/MNIST_100-horiz-noniid~d~0.1_sync-0.1-5_Accuracy_mean.png">
 </p>
 
 
-- Learning curves of CIFAR10, $100$ clients, horizontally distributed, Non-IID ($K=2$), $0.1$ activate ratio, $5$ local epochs
+- Learning curves of CIFAR10, $100$ clients, horizontally distributed, Non-IID ( $K=2$ ), $0.1$ activate ratio, $5$ local epochs
 <p align="center">
 <img src="/asset/CIFAR10_100-horiz-noniid~c~2_sync-0.1-5_Accuracy_mean.png">
 </p>
