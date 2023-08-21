@@ -28,23 +28,34 @@ See `requirements.txt`
     ```ruby
     python test_model_fl.py --control_name CIFAR10_resnet18
     ```
-<!--  - Process exp results
+ - Process exp results
     ```ruby
     python process.py
-    ``` -->
+    ```
 
-<!-- ## Results
-- Learning curves of MNIST
+## Results
+- Learning curves of CIFAR10, $100$ clients, horizontally distributed, IID, $0.1$ activate ratio, $5$ local epochs
 <p align="center">
-<img src="/asset/MNIST_Accuracy_mean.png">
+<img src="/asset/MNIST_100-horiz-iid_sync-0.1-5_Accuracy_mean.png">
 </p>
 
 
-- Learning curves of CIFAR10
+- Learning curves of MNIST, $100$ clients, horizontally distributed, IID, $0.1$ activate ratio, $5$ local epochs
 <p align="center">
-<img src="/asset/CIFAR10_Accuracy_mean.png">
+<img src="/asset/CIFAR10_100-horiz-iid_sync-0.1-5_Accuracy_mean.png">
 </p>
- -->
+
+
+- Learning curves of CIFAR10, $100$ clients, horizontally distributed, Non-IID ($Dir(0.1)$), $0.1$ activate ratio, $5$ local epochs
+<p align="center">
+<img src="/asset/MNIST_100-horiz-noniid~d~0.1_sync-0.1-5_Accuracy_mean.png">
+</p>
+
+
+- Learning curves of CIFAR10, $100$ clients, horizontally distributed, Non-IID ($K=2$), $0.1$ activate ratio, $5$ local epochs
+<p align="center">
+<img src="/asset/CIFAR10_100-horiz-noniid~c~2_sync-0.1-5_Accuracy_mean.png">
+</p>
 
 ## Acknowledgements
 *Enmao Diao*
