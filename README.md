@@ -20,13 +20,13 @@ See `requirements.txt`
     python make.py --mode base
     python make.py --mode fl
     ```
- - Train with MNIST and linear model (FedAvg, 100 horizontally distributed clinets, sychronized with 0.1 active ratio per five local epochs)
+ - Train with MNIST and linear model (FedAvg, 100 horizontally, IID distributed clients, sychronized with 0.1 active ratio per five local epochs)
     ```ruby
     python train_model_fl.py --control_name MNIST_linear_100-horiz-iid_sync-0.1-5
     ```
- - Test with CIFAR10 and resnet18 model (FedAvg, 100 horizontally distributed clinets, sychronized with 0.1 active ratio per five local epochs)
+ - Test with CIFAR10 and resnet18 model (FedAvg, 100 horizontally, Non-IID ( $K=2$ ) distributed clients, sychronized with 0.1 active ratio per five local epochs)
     ```ruby
-    python test_model_fl.py --control_name CIFAR10_resnet18
+    python test_model_fl.py --control_name CIFAR10_resnet18_100-horiz-noniid~c~2_sync-0.1-5
     ```
  - Process exp results
     ```ruby
