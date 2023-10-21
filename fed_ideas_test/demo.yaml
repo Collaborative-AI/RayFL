@@ -6,7 +6,7 @@ idle_timeout_minutes: 2
 # Cloud-provider specific configuration.
 provider:
     type: aws
-    region: us-west-1
+    region: us-east-2
     cache_stopped_nodes: False
 
 available_node_types:
