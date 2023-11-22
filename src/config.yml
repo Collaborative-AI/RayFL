@@ -1,0 +1,22 @@
+---
+# control
+control:
+  data_name: MNIST
+  model_name: linear
+  data_mode:
+    num_split: 2
+    split_mode: horiz
+    stat_mode: iid
+  comm_mode:
+    agg_mode: sync
+    active_ratio: 1.0
+    num_update: 5
+# experiment
+pin_memory: True
+num_worker: 0
+init_seed: 0
+num_experiment: 1
+log_interval: 0.25
+device: cuda
+resume_mode: 0
+verbose: False
