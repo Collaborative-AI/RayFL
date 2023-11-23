@@ -36,8 +36,8 @@ class Controller:
         return
 
     def train(self):
-        self.worker['server'].train(self.worker['client'])
-        self.worker['server'].synchronize(self.worker['client'])
+        active_client_id, model_state_dict = self.worker['server'].train(self.worker['client'])
+        self.worker['server'].synchronize(active_client_id, model_state_dict)
         return
 
     def update(self):
@@ -51,8 +51,8 @@ class Controller:
         return
 
     def test(self):
-        self.worker['server'].make_batchnorm()
-        self.worker['server'].test(self.worker['client'])
+        self.worker['server'].make_batchnorm_server()
+        self.worker['server'].test_server()
         return
 
     def model_state_dict(self):
@@ -83,25 +83,23 @@ class Server:
         self.metric = metric
         self.logger = logger
 
-    def synchronize(self, client):
+    def synchronize(self, active_client_id, model_state_dict):
         with torch.no_grad():
-            valid_client = [client[i] for i in range(len(client)) if client[i].active]
-            if len(valid_client) > 0:
+            if len(model_state_dict) > 0:
                 self.optimizer['global'].zero_grad()
-                valid_data_size = [len(self.data_split['data'][client[i].id])
-                                   for i in range(len(client)) if client[i].active]
+                valid_data_size = [len(self.data_split['data'][active_client_id[i]])
+                                   for i in range(len(active_client_id))]
                 weight = torch.tensor(valid_data_size)
                 weight = weight / weight.sum()
                 for k, v in self.model.named_parameters():
                     parameter_type = k.split('.')[-1]
                     if 'weight' in parameter_type or 'bias' in parameter_type:
                         tmp_v = v.data.new_zeros(v.size())
-                        for m in range(len(valid_client)):
-                            tmp_v += weight[m] * valid_client[m].model_state_dict[k]
+                        for i in range(len(active_client_id)):
+                            tmp_v += weight[i] * model_state_dict[i][k]
                         v.grad = (v.data - tmp_v).detach()
                 self.optimizer['global'].step()
-            for i in range(len(client)):
-                client[i].active = False
+            self.optimizer['local'].step()
             self.scheduler['local'].step()
         return
 
@@ -109,42 +107,33 @@ class Server:
         start_time = time.time()
         lr = self.optimizer['local'].param_groups[0]['lr']
         num_active_clients = int(np.ceil(cfg['comm_mode']['active_ratio'] * len(client)))
-        active_client_idx = torch.randperm(len(client))[:num_active_clients]
-        # active_client_id = [client[i].id for i in active_client_idx]
-        active_client = [client[i] for i in range(len(client)) if i in active_client_idx]
-        # for i in range(len(client)):
-        #     if i in active_client_idx:
-        #         # client[i].active = True
-        #         active_client.append(client[i])
-        # else:
-        # client[i].active = False
-        print(self.model.state_dict())
-        result = [active_client[i].train.remote(self.model.state_dict(), lr) for i in range(len(active_client))]
-        print(ray.get(result))
-        exit()
-        # for i in range(num_active_clients):
-        #     m = active_client_idx[i]
-        #     client[m].train(copy.deepcopy(self.model.state_dict()), lr)
+        active_client_id = torch.randperm(len(client))[:num_active_clients]
+        active_client = [client[i] for i in range(len(client)) if i in active_client_id]
+        result = []
+        for i in range(len(active_client)):
+            result_i = active_client[i].train.remote(self.model.state_dict(), lr)
+            result.append(result_i)
+        result = ray.get(result)
+        model_state_dict = [result[i]['model_state_dict'] for i in range(len(result))]
+        logger_state_dict = [result[i]['logger_state_dict'] for i in range(len(result))]
+        for i in range(len(logger_state_dict)):
+            self.logger.update_state_dict(logger_state_dict[i])
+        _time = (time.time() - start_time)
+        exp_finished_time = datetime.timedelta(
+            seconds=round((cfg['global']['num_epochs'] - cfg['epoch']) * _time * num_active_clients))
+        info = {'info': ['Model: {}'.format(cfg['model_tag']),
+                         'Train Epoch (C): {}'.format(cfg['epoch']),
+                         'Learning rate: {:.6f}'.format(lr),
+                         'Experiment Finished Time: {}'.format(exp_finished_time)]}
+        self.logger.append(info, 'train')
+        print(self.logger.write('train', self.metric.metric_name['train']))
+        return active_client_id, model_state_dict
 
-        # if i % int((num_active_clients * cfg['log_interval']) + 1) == 0:
-        #     _time = (time.time() - start_time) / (i + 1)
-        #     epoch_finished_time = datetime.timedelta(seconds=_time * (num_active_clients - i - 1))
-        #     exp_finished_time = epoch_finished_time + datetime.timedelta(
-        #         seconds=round((cfg['global']['num_epochs'] - cfg['epoch']) * _time * num_active_clients))
-        #     exp_progress = 100. * i / num_active_clients
-        #     info = {'info': ['Model: {}'.format(cfg['model_tag']),
-        #                      'Train Epoch (C): {}({:.0f}%)'.format(cfg['epoch'], exp_progress),
-        #                      'Learning rate: {:.6f}'.format(lr),
-        #                      'ID: {}({}/{})'.format(active_client_id[i], i + 1, num_active_clients),
-        #                      'Epoch Finished Time: {}'.format(epoch_finished_time),
-        #                      'Experiment Finished Time: {}'.format(exp_finished_time)]}
-        #     self.logger.append(info, 'train')
-        #     print(self.logger.write('train', self.metric.metric_name['train']))
-        return
-
-    def make_batchnorm(self):
+    def make_batchnorm_server(self):
+        flag = False
         def make_batchnorm_(m, momentum, track_running_stats):
             if isinstance(m, (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d)):
+                flag = True
                 m.momentum = momentum
                 m.track_running_stats = track_running_stats
                 m.register_buffer('running_mean', torch.zeros(m.num_features, device=m.weight.device))
@@ -153,27 +142,22 @@ class Server:
             return m
 
         with torch.no_grad():
-            model = copy.deepcopy(self.model)
-            model = model.to(cfg['device'])
-            model.apply(lambda m: make_batchnorm_(m, momentum=None, track_running_stats=True))
-            model.train(True)
-            for i, input in enumerate(self.data_loader['test']):
-                input = collate(input)
-                input = to_device(input, cfg['device'])
-                model(input)
-        self.model.load_state_dict(model.state_dict())
+            self.model.apply(lambda m: make_batchnorm_(m, momentum=None, track_running_stats=True))
+            if flag:
+                self.model.train(True)
+                for i, input in enumerate(self.data_loader['train']):
+                    input = collate(input)
+                    input = to_device(input, cfg['device'])
+                    self.model(input)
         return
 
-    def test(self, client):
+    def test_server(self):
         with torch.no_grad():
-            model = copy.deepcopy(self.model)
-            model = model.to(cfg['device'])
-            model.train(False)
+            self.model.train(False)
             for i, input in enumerate(self.data_loader['test']):
                 input = collate(input)
                 input_size = input['data'].size(0)
-                input = to_device(input, cfg['device'])
-                output = model(input)
+                output = self.model(input)
                 evaluation = self.metric.evaluate('test', 'batch', input, output)
                 self.logger.append(evaluation, 'test', input_size)
             evaluation = self.metric.evaluate('test', 'full')
@@ -214,33 +198,23 @@ class Client:
                 optimizer.zero_grad()
                 evaluation = metric.evaluate('train', 'batch', input, output)
                 logger.append(evaluation, 'train', n=input_size)
-        return model.state_dict(), logger.state_dict()
+        result = {'model_state_dict': model.state_dict(), 'logger_state_dict': logger.state_dict()}
+        return result
 
-    def test(self, model, metric, logger):
-        with torch.no_grad():
-            model = model.to(cfg['device'])
-            model.train(False)
-            for i, input in enumerate(self.data_loader['test']):
-                input = collate(input)
-                input_size = input['data'].size(0)
-                input = to_device(input, cfg['device'])
-                output = model(input)
-                evaluation = metric.evaluate('test', 'batch', input, output)
-                logger.append(evaluation, 'test', input_size)
-            evaluation = metric.evaluate('test', 'full')
-            logger.append(evaluation, 'test', input_size)
-        return
-
-
-def make_state_dict(input):
-    state_dict = input.state_dict()
-    state_dict_ = {}
-    for k, v in state_dict.items():
-        if isinstance(state_dict[k], torch.Tensor):
-            state_dict_[k] = copy.deepcopy(to_device(state_dict[k], 'cpu'))
-        else:
-            state_dict_[k] = copy.deepcopy(state_dict[k])
-    return state_dict_
+    # def test(self, model, metric, logger):
+    #     with torch.no_grad():
+    #         model = model.to(cfg['device'])
+    #         model.train(False)
+    #         for i, input in enumerate(self.data_loader['test']):
+    #             input = collate(input)
+    #             input_size = input['data'].size(0)
+    #             input = to_device(input, cfg['device'])
+    #             output = model(input)
+    #             evaluation = metric.evaluate('test', 'batch', input, output)
+    #             logger.append(evaluation, 'test', input_size)
+    #         evaluation = metric.evaluate('test', 'full')
+    #         logger.append(evaluation, 'test', input_size)
+    #     return
 
 
 def make_controller(data_split, model, optimizer, scheduler, metric, logger):

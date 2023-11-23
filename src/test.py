@@ -47,7 +47,7 @@ def runExperiment():
                             stat_mode=cfg['data_mode']['stat_mode'])
     result = resume(os.path.join(checkpoint_path, 'model'), resume_mode=cfg['resume_mode'])
     cfg['epoch'] = 1
-    optimizer = {'local': make_optimizer(model.parameters(), cfg['local']),
+    optimizer = {'local': make_optimizer([torch.nn.Parameter(torch.tensor([0.]))], cfg['local']),
                  'global': make_optimizer(model.parameters(), cfg['global'])}
     scheduler = {'local': make_scheduler(optimizer['local'], cfg['local']),
                  'global': make_scheduler(optimizer['global'], cfg['global'])}
@@ -67,7 +67,6 @@ def runExperiment():
     for epoch in range(cfg['epoch'], cfg[cfg['model_name']]['num_epochs'] + 1):
         cfg['epoch'] = epoch
         controller.train()
-        exit()
         controller.test()
         controller.update()
         result = {'cfg': cfg, 'epoch': cfg['epoch'] + 1, 'model_state_dict': controller.model_state_dict(),

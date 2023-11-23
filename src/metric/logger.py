@@ -90,6 +90,30 @@ class Logger:
         self.iterator = state_dict['iterator']
         return
 
+    def update_state_dict(self, state_dict):
+        for name in state_dict['tracker']:
+            self.tracker[name] = state_dict['tracker'][name]
+            if isinstance(state_dict['mean'][name], Number):
+                n = state_dict['counter'][name]
+                self.counter[name] += n
+                self.mean[name] = ((self.counter[name] - n) * self.mean[name] + n * state_dict['mean'][name]) / \
+                                  self.counter[name]
+            elif isinstance(state_dict['mean'][name], list) and len(state_dict['mean'][name]) > 0 and isinstance(
+                    state_dict['mean'][name][0], Number):
+                if name not in self.mean:
+                    self.counter[name] = [0 for _ in range(len(state_dict['mean'][name]))]
+                    self.mean[name] = [0 for _ in range(len(state_dict['mean'][name]))]
+                _ntuple = ntuple(len(state_dict['mean'][name]))
+                n = state_dict['counter'][name]
+                n = _ntuple(n)
+                for i in range(len(state_dict['mean'][name])):
+                    self.counter[name][i] += n[i]
+                    self.mean[name][i] = ((self.counter[name][i] - n[i]) * self.mean[name][i] + n[i] *
+                                          state_dict['mean'][name][i]) / self.counter[name][i]
+            self.history[name].extend(state_dict['history'][name])
+            self.iterator[name] += state_dict['iterator'][name]
+        return
+
     def state_dict(self):
         return {'tracker': self.tracker, 'counter': self.counter, 'mean': self.mean, 'history': self.history,
                 'iterator': self.iterator}
