@@ -51,8 +51,14 @@ class Controller:
         return
 
     def test(self):
-        self.worker['server'].make_batchnorm_server()
-        self.worker['server'].test_server()
+        if cfg['test_mode'] == 'server':
+            self.worker['server'].make_batchnorm_server()
+            self.worker['server'].test_server()
+        elif cfg['test_mode'] == 'client':
+            self.worker['server'].make_batchnorm_client(self.worker['client'])
+            self.worker['server'].test_client(self.worker['client'])
+        else:
+            raise ValueError('Not valid test mode')
         return
 
     def model_state_dict(self):
@@ -168,6 +174,50 @@ class Server:
             print(self.logger.write('test', self.metric.metric_name['test']))
         return
 
+    def make_batchnorm_client(self, client):
+        # result = []
+        # for i in range(len(client)):
+        #     result_i = active_client[i].train.remote(self.model.state_dict(), lr)
+        #     result.append(result_i)
+        # result = ray.get(result)
+
+        flag = False
+        def make_batchnorm_(m, momentum, track_running_stats):
+            if isinstance(m, (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d)):
+                flag = True
+                m.momentum = momentum
+                m.track_running_stats = track_running_stats
+                m.register_buffer('running_mean', torch.zeros(m.num_features, device=m.weight.device))
+                m.register_buffer('running_var', torch.ones(m.num_features, device=m.weight.device))
+                m.register_buffer('num_batches_tracked', torch.tensor(0, dtype=torch.long, device=m.weight.device))
+            return m
+
+        with torch.no_grad():
+            self.model.apply(lambda m: make_batchnorm_(m, momentum=None, track_running_stats=True))
+            if flag:
+                self.model.train(True)
+                for i, input in enumerate(self.data_loader['train']):
+                    input = collate(input)
+                    input = to_device(input, cfg['device'])
+                    self.model(input)
+        return
+
+    def test_client(self):
+        with torch.no_grad():
+            self.model.train(False)
+            for i, input in enumerate(self.data_loader['test']):
+                input = collate(input)
+                input_size = input['data'].size(0)
+                output = self.model(input)
+                evaluation = self.metric.evaluate('test', 'batch', input, output)
+                self.logger.append(evaluation, 'test', input_size)
+            evaluation = self.metric.evaluate('test', 'full')
+            self.logger.append(evaluation, 'test', input_size)
+            info = {
+                'info': ['Model: {}'.format(cfg['model_tag']), 'Test Epoch: {}({:.0f}%)'.format(cfg['epoch'], 100.)]}
+            self.logger.append(info, 'test')
+            print(self.logger.write('test', self.metric.metric_name['test']))
+        return
 
 @ray.remote
 class Client:

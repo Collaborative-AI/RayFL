@@ -11,6 +11,7 @@ control:
     agg_mode: sync
     active_ratio: 1.0
     num_update: 5
+  test_mode: server
 # experiment
 pin_memory: True
 num_worker: 0

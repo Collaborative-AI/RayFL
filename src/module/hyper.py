@@ -31,6 +31,7 @@ def process_control():
         cfg['comm_mode'] = cfg['control']['comm_mode']
         cfg['comm_mode']['active_ratio'] = float(cfg['comm_mode']['active_ratio'])
         cfg['comm_mode']['num_update'] = int(cfg['comm_mode']['num_update'])
+        cfg['test_mode'] = cfg['control']['test_mode']
         cfg['local'] = {}
         cfg['local']['shuffle'] = {'train': True, 'test': False}
         cfg['local']['optimizer_name'] = 'SGD'

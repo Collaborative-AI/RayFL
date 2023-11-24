@@ -39,10 +39,10 @@ def runExperiment():
     best_path = os.path.join(model_tag_path, 'best')
     dataset = make_dataset(cfg['data_name'])
     dataset = process_dataset(dataset)
-    model = make_model(cfg['model_name'])
+    model = make_model(cfg)
     model = model.to(cfg['device'])
-    data_loader = make_data_loader(dataset, cfg['model_name'])
-    metric = make_metric({'train': ['Loss'], 'test': ['Loss']})
+    data_loader = make_data_loader(dataset, cfg[cfg['model_name']]['batch_size'], cfg[cfg['model_name']]['shuffle'])
+    metric = make_metric(cfg['data_name'], {'train': ['Loss'], 'test': ['Loss']})
     result = resume(os.path.join(best_path, 'model'))
     model.load_state_dict(result['model_state_dict'])
     cfg['epoch'] = result['epoch']
