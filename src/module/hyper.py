@@ -40,7 +40,7 @@ def process_control():
         cfg['local']['weight_decay'] = 5e-4
         cfg['local']['nesterov'] = True
         cfg['local']['num_epochs'] = 800
-        cfg['local']['batch_size'] = {'train': 500, 'test': 500}
+        cfg['local']['batch_size'] = {'train': 250, 'test': 500}
         cfg['local']['scheduler_name'] = 'CosineAnnealingLR'
         cfg['local']['num_update'] = cfg['comm_mode']['num_update']
         cfg['global'] = {}

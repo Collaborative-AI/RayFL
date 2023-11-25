@@ -46,7 +46,7 @@ class MLP(nn.Module):
         return output
 
 
-def mlp():
+def mlp(cfg):
     data_shape = cfg['data_shape']
     target_size = cfg['target_size']
     hidden_size = cfg['mlp']['hidden_size']
