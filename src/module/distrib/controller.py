@@ -3,11 +3,11 @@ import numpy as np
 import ray
 import time
 import torch
-import torch.nn as nn
 from config import cfg
 from dataset import make_data_loader, collate, split_dataset
 from model import make_model, make_optimizer, make_batchnorm
 from metric import make_metric, make_logger
+from module import to_device
 
 
 class Controller:
@@ -224,7 +224,7 @@ class Client:
         self.data_loader = make_data_loader(self.dataset, cfg['local']['batch_size'], cfg['local']['shuffle'])
 
     def train(self, model_state_dict, lr):
-        model = make_model(self.cfg)
+        model = make_model(self.cfg).to(self.cfg['device'])
         model.load_state_dict(model_state_dict)
         optimizer = make_optimizer(model.parameters(), self.cfg['local'])
         optimizer_state_dict = optimizer.state_dict()
@@ -237,6 +237,7 @@ class Client:
             for i, input in enumerate(self.data_loader['train']):
                 input = collate(input)
                 input_size = input['data'].size(0)
+                input = to_device(input, cfg['device'])
                 output = model(input)
                 output['loss'].backward()
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
@@ -244,19 +245,23 @@ class Client:
                 optimizer.zero_grad()
                 evaluation = metric.evaluate('train', 'batch', input, output)
                 logger.append(evaluation, 'train', n=input_size)
+        model = model.to('cpu')
         result = {'model_state_dict': model.state_dict(), 'logger_state_dict': logger.state_dict()}
         return result
 
     def make_batchnorm(self, model_state_dict, momentum, track_running_stats):
         with torch.no_grad():
             model = make_model(self.cfg)
-            model.load_state_dict(model_state_dict)
             flag = make_batchnorm(model, momentum, track_running_stats)
             if flag and track_running_stats:
+                model = model.to(self.cfg['device'])
+                model.load_state_dict(model_state_dict)
                 model.train(True)
                 for i, input in enumerate(self.data_loader['train']):
                     input = collate(input)
+                    input = to_device(input, cfg['device'])
                     model(input)
+                model = model.to('cpu')
                 result = {'model_state_dict': model.state_dict()}
             else:
                 result = None
@@ -264,13 +269,14 @@ class Client:
 
     def test(self, model_state_dict):
         with torch.no_grad():
-            model = make_model(self.cfg)
+            model = make_model(self.cfg).to(self.cfg['device'])
             model.load_state_dict(model_state_dict)
             metric = make_metric(self.cfg['data_name'], {'train': ['Loss'], 'test': ['Loss']})
             logger = make_logger()
             model.train(False)
             for i, input in enumerate(self.data_loader['test']):
                 input = collate(input)
+                input = to_device(input, cfg['device'])
                 input_size = input['data'].size(0)
                 output = model(input)
                 evaluation = metric.evaluate('test', 'batch', input, output)

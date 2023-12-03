@@ -2,7 +2,7 @@
 # control
 control:
   data_name: MNIST
-  model_name: mlp
+  model_name: linear
   data_mode:
     num_split: 2
     split_mode: horiz
