@@ -7,5 +7,5 @@ There are two files under fed_ideas_test, fed_block and fed_not_block. There is 
 One difference is, the fed_block uses ray.put() that will get all ray object(task) reference result back which is a blocking operation, and ray_not_block uses ray.wait(), which can get the first finished task reference and do some operations on them without waiting those still running tasks. However, since it's a really easy demo, there's no difference. You can learn more the differnece on https://docs.ray.io/en/latest/ray-core/tips-for-first-time.html on ray.wait() part. 
 
 
-
-
+## finished RayFL under src
+Run the experiment src/train_model_fl.py, which is based on the [FLPipe](https://github.com/diaoenmao/FLPipe) code. Major changes to adopt FLPipe to Ray were made in module/distrib/controller.py, where the controller manages the `Ray-actor` clients stored in the list `self.worker['client']`. The Client class is decorated with @Ray.remote to make it a Ray actor.
