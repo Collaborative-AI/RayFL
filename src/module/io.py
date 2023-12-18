@@ -63,7 +63,7 @@ def to_device(input, device):
 def resume(path, verbose=True, resume_mode=1):
     if os.path.exists(path) and resume_mode == 1:
         result = load(path)
-        if verbose:
+        if verbose and isinstance(result, dict) and 'epoch' in result:
             print('Resume from {}'.format(result['epoch']))
     else:
         if resume_mode == 1:

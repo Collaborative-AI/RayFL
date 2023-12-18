@@ -21,7 +21,7 @@ class Logger:
     def save(self, flush):
         for name in self.mean:
             self.history[name].append(self.mean[name])
-        if flush:
+        if self.writer is not None and flush:
             self.flush()
         return
 
