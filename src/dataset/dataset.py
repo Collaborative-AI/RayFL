@@ -178,7 +178,7 @@ def noniid(dataset, num_splits, stat_mode):
             target_split_i = exact_target_split[i:i + shard_per_user]
             for j in range(len(target_split_i)):
                 target_i_j = target_split_i[j]
-                for k in dataset:
+                for k in dataset: 
                     idx = torch.randint(len(target_idx_split[target_i_j][k]), (1,)).item()
                     data_split[i // shard_per_user][k].extend(target_idx_split[target_i_j][k].pop(idx))
                     if target_i_j in leftover_target_split[k]:
