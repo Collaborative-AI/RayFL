@@ -18,6 +18,6 @@ num_worker: 0
 init_seed: 0
 num_experiment: 1
 log_interval: 0.25
-device: cuda
+device: cpu
 resume_mode: 0
 verbose: False
