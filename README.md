@@ -9,3 +9,37 @@ One difference is, the fed_block uses ray.put() that will get all ray object(tas
 
 ## finished RayFL under src
 Run the experiment src/train_model_fl.py, which is based on the [FLPipe](https://github.com/diaoenmao/FLPipe) code. Major changes to adopt FLPipe to Ray were made in module/distrib/controller.py, where the controller manages the `Ray-actor` clients stored in the list `self.worker['client']`. The Client class is decorated with @Ray.remote to make it a Ray actor.
+
+## docker
+- Added `dockerfile`
+- Changed `src/train_model_fl.py`
+- Changed `init_clusters.yaml`
+
+```
+FROM rayproject/ray:latest-gpu
+
+# install requirements.txt
+COPY RayFL/requirements.txt requirements.txt
+
+RUN pip install -r requirements.txt
+
+COPY . /RayFL
+WORKDIR /RayFL/src
+RUN conda install pytorch torchvision torchaudio cpuonly -c pytorch
+
+# set root user
+USER root
+```
+
+
+Set up `aws-cli` locally, open terminal, run `ray up init_clusters.yaml`
+After successful launch, run `ray submit init_clusters.yaml src/train_model_fl.py
+You can view ray dashboard by `ray dashboard init_clusters.yaml`
+
+Note: now the `init_clusters.yaml` is using [image: "tardism/rayfl"](https://hub.docker.com/repository/docker/tardism/rayfl/general). 
+```
+# uncomment the following 2 lines to run it locally
+import sys
+sys.path.insert(0, '/RayFL/src')
+```
+This is added to `train_model_fl.py` to add `src` to python search path for modules. 
