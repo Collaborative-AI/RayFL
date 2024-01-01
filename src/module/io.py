@@ -12,6 +12,7 @@ def check_exists(path):
 
 
 def makedir_exist_ok(path):
+    print("the path is !!!!!!!!!! makedir_exist_ok", path)
     try:
         os.makedirs(path)
     except OSError as e:

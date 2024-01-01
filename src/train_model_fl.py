@@ -1,3 +1,8 @@
+# uncomment the following 2 lines to run it locally
+import sys
+sys.path.insert(0, '/RayFL/src')
+
+
 import argparse
 import os
 import shutil
