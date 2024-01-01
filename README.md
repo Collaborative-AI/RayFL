@@ -1,5 +1,5 @@
 # Ray
-## ideas test on aws
+## idea tests on aws
 So far we tested it on aws, following the tutorial on https://saturncloud.io/blog/getting-started-with-ray-clusters/, ray cluster on aws part in Scaling Python with Ray by Holden Karau & Boris Lublinsky https://github.com/scalingpythonml/scaling-python-with-ray/blob/main/appB.asciidoc, and ray cluster documentation https://docs.ray.io/en/latest/cluster/vms/getting-started.html#vm-cluster-quick-start. 
 
 There are two files under fed_ideas_test, fed_block and fed_not_block. There is a simple Model class acts as ray stateful actor, that weights init as [0], and train() that sleeps 20s first then increase weights by 3. We create 40 actors, and train for 1 round. If these 40 actors are not running in parallel, it's going to take 40*20 = 800s, around 13.3 minutes. However, on ray with 3 nodes(workers), each nodes has 2 core cpu and 4g ram, the running time is 36s on both fed_block and fed_not_block. Due to ray autoscaler, ray head might add more nodes(workers) automatically to make running time even less. 
