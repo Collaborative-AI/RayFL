@@ -28,13 +28,13 @@ class MLP(nn.Module):
         x = self.blocks(x)
         return x
 
-    def classify(self, x):
+    def output(self, x):
         x = self.linear(x)
         return x
 
     def f(self, x):
         x = self.feature(x)
-        x = self.classify(x)
+        x = self.output(x)
         return x
 
     def forward(self, input):
@@ -46,7 +46,7 @@ class MLP(nn.Module):
         return output
 
 
-def mlp(cfg):
+def mlp():
     data_shape = cfg['data_shape']
     target_size = cfg['target_size']
     hidden_size = cfg['mlp']['hidden_size']

@@ -77,13 +77,13 @@ class WideResNet(nn.Module):
         x = self.blocks(x)
         return x
 
-    def classify(self, x):
+    def output(self, x):
         x = self.linear(x)
         return x
 
     def f(self, x):
         x = self.feature(x)
-        x = self.classify(x)
+        x = self.output(x)
         return x
 
     def forward(self, input):
@@ -95,7 +95,7 @@ class WideResNet(nn.Module):
         return output
 
 
-def wresnet28x2(cfg):
+def wresnet28x2():
     data_shape = cfg['data_shape']
     target_size = cfg['target_size']
     depth = cfg['wresnet28x2']['depth']
@@ -106,7 +106,7 @@ def wresnet28x2(cfg):
     return model
 
 
-def wresnet28x8(cfg):
+def wresnet28x8():
     data_shape = cfg['data_shape']
     target_size = cfg['target_size']
     depth = cfg['wresnet28x8']['depth']

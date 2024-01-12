@@ -14,10 +14,10 @@ control:
   test_mode: server
 # experiment
 pin_memory: True
-num_worker: 0
+num_workers: 0
 init_seed: 0
-num_experiment: 1
+num_experiments: 1
 log_interval: 0.25
 device: cpu
 resume_mode: 0
-verbose: False
+profile: False

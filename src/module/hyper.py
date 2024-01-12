@@ -5,6 +5,8 @@ def process_control():
     cfg['collate_mode'] = 'dict'
     data_shape = {'MNIST': [1, 28, 28], 'FashionMNIST': [1, 28, 28], 'SVHN': [3, 32, 32], 'CIFAR10': [3, 32, 32],
                   'CIFAR100': [3, 32, 32]}
+    target_size = {'MNIST': 10, 'FashionMNIST': 10, 'SVHN': 10, 'CIFAR10': 10, 'CIFAR100': 100}
+
     cfg['linear'] = {}
     cfg['mlp'] = {'hidden_size': 128, 'scale_factor': 2, 'num_layers': 2, 'activation': 'relu'}
     cfg['cnn'] = {'hidden_size': [64, 128, 256, 512]}
@@ -14,6 +16,8 @@ def process_control():
     cfg['wresnet28x8'] = {'depth': 28, 'widen_factor': 8, 'drop_rate': 0.0}
     cfg['data_name'] = cfg['control']['data_name']
     cfg['data_shape'] = data_shape[cfg['data_name']]
+    cfg['target_size'] = target_size[cfg['data_name']]
+
     cfg['model_name'] = cfg['control']['model_name']
     model_name = cfg['model_name']
     cfg[model_name]['shuffle'] = {'train': True, 'test': False}
@@ -25,6 +29,14 @@ def process_control():
     cfg[model_name]['scheduler_name'] = 'CosineAnnealingLR'
     cfg[model_name]['num_epochs'] = 400
     cfg[model_name]['batch_size'] = {'train': 250, 'test': 250}
+
+    cfg['batch_size'] = 250
+
+    cfg['step_period'] = 1
+    cfg['num_steps'] = 80000
+    cfg['eval_period'] = 200
+    # cfg['num_epochs'] = 400
+
     if 'data_mode' in cfg['control']:
         cfg['data_mode'] = cfg['control']['data_mode']
         cfg['data_mode']['num_split'] = int(cfg['data_mode']['num_split'])

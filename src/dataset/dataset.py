@@ -1,4 +1,3 @@
-import copy
 import dataset
 import numpy as np
 import os
@@ -62,8 +61,18 @@ def make_dataset(data_name, verbose=True):
     return dataset_
 
 
-def input_collate(batch):
-    return {key: [b[key] for b in batch] for key in batch[0]}
+def input_collate(input):
+    first = input[0]
+    batch = {}
+    for k, v in first.items():
+        if v is not None and not isinstance(v, str):
+            if isinstance(v, torch.Tensor):
+                batch[k] = torch.stack([f[k] for f in input])
+            elif isinstance(v, np.ndarray):
+                batch[k] = torch.tensor(np.stack([f[k] for f in input]))
+            else:
+                batch[k] = torch.tensor([f[k] for f in input])
+    return batch
 
 
 def make_data_collate(collate_mode):
@@ -75,33 +84,34 @@ def make_data_collate(collate_mode):
         raise ValueError('Not valid collate mode')
 
 
-def make_data_loader(dataset, batch_size, shuffle, sampler=None, pin_memory=True, num_worker=0,
-                     collate_mode='dict', seed=0):
+def make_data_loader(dataset, batch_size):
     data_loader = {}
     for k in dataset:
-        if sampler is None:
-            data_loader[k] = DataLoader(dataset=dataset[k], batch_size=batch_size[k], shuffle=shuffle[k],
-                                        pin_memory=pin_memory, num_workers=num_worker,
-                                        collate_fn=make_data_collate(collate_mode),
-                                        worker_init_fn=np.random.seed(seed))
+        if k == 'train':
+            cfg['num_samples'] = batch_size[k] * (cfg['num_steps'] - cfg['iteration']) * cfg['step_period']
+        if k == 'train' and cfg['num_samples'] > 0:
+            generator = torch.Generator()
+            generator.manual_seed(cfg['seed'])
+            sampler = torch.utils.data.RandomSampler(dataset[k], replacement=False, num_samples=cfg['num_samples'],
+                                                     generator=generator)
+            data_loader[k] = DataLoader(dataset=dataset[k], batch_size=batch_size[k], sampler=sampler,
+                                        pin_memory=cfg['pin_memory'], num_workers=cfg['num_workers'],
+                                        collate_fn=make_data_collate(cfg['collate_mode']),
+                                        worker_init_fn=np.random.seed(cfg['seed']))
         else:
-            data_loader[k] = DataLoader(dataset=dataset[k], batch_size=batch_size[k], sampler=sampler[k],
-                                        pin_memory=pin_memory, num_workers=num_worker,
-                                        collate_fn=make_data_collate(collate_mode),
-                                        worker_init_fn=np.random.seed(seed))
+            data_loader[k] = DataLoader(dataset=dataset[k], batch_size=batch_size[k], shuffle=False,
+                                        pin_memory=cfg['pin_memory'], num_workers=cfg['num_workers'],
+                                        collate_fn=make_data_collate(cfg['collate_mode']),
+                                        worker_init_fn=np.random.seed(cfg['seed']))
     return data_loader
-
-
-def collate(input):
-    for k in input:
-        input[k] = torch.stack(input[k], 0)
-    return input
 
 
 def process_dataset(dataset):
     processed_dataset = dataset
     cfg['data_size'] = {k: len(processed_dataset[k]) for k in processed_dataset}
-    cfg['target_size'] = processed_dataset['train'].target_size
+    if 'num_epochs' in cfg:
+        cfg['num_steps'] = int(np.ceil(len(processed_dataset['train']) / cfg['batch_size'])) * cfg['num_epochs']
+        cfg['eval_period'] = int(np.ceil(len(processed_dataset['train']) / cfg['batch_size']))
     return processed_dataset
 
 
@@ -178,7 +188,7 @@ def noniid(dataset, num_splits, stat_mode):
             target_split_i = exact_target_split[i:i + shard_per_user]
             for j in range(len(target_split_i)):
                 target_i_j = target_split_i[j]
-                for k in dataset: 
+                for k in dataset:
                     idx = torch.randint(len(target_idx_split[target_i_j][k]), (1,)).item()
                     data_split[i // shard_per_user][k].extend(target_idx_split[target_i_j][k].pop(idx))
                     if target_i_j in leftover_target_split[k]:

@@ -4,7 +4,7 @@ import ray
 import time
 import torch
 from config import cfg
-from dataset import make_data_loader, collate, split_dataset
+from dataset import make_data_loader, split_dataset
 from model import make_model, make_optimizer, make_batchnorm
 from metric import make_metric, make_logger
 from module import to_device
