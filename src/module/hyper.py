@@ -39,10 +39,10 @@ def process_control():
 
     if 'data_mode' in cfg['control']:
         cfg['data_mode'] = cfg['control']['data_mode']
-        cfg['data_mode']['num_split'] = int(cfg['data_mode']['num_split'])
+        cfg['data_mode']['num_splits'] = int(cfg['data_mode']['num_splits'])
         cfg['comm_mode'] = cfg['control']['comm_mode']
         cfg['comm_mode']['active_ratio'] = float(cfg['comm_mode']['active_ratio'])
-        cfg['comm_mode']['num_update'] = int(cfg['comm_mode']['num_update'])
+        cfg['comm_mode']['num_steps'] = int(cfg['comm_mode']['num_steps'])
         cfg['test_mode'] = cfg['control']['test_mode']
         cfg['local'] = {}
         cfg['local']['shuffle'] = {'train': True, 'test': False}
@@ -54,7 +54,7 @@ def process_control():
         cfg['local']['num_epochs'] = 800
         cfg['local']['batch_size'] = {'train': 250, 'test': 500}
         cfg['local']['scheduler_name'] = 'CosineAnnealingLR'
-        cfg['local']['num_update'] = cfg['comm_mode']['num_update']
+        cfg['local']['num_steps'] = cfg['comm_mode']['num_steps']
         cfg['global'] = {}
         cfg['global']['shuffle'] = {'train': True, 'test': False}
         cfg['global']['optimizer_name'] = 'SGD'
@@ -62,7 +62,7 @@ def process_control():
         cfg['global']['momentum'] = 0
         cfg['global']['weight_decay'] = 0
         cfg['global']['nesterov'] = False
-        cfg['global']['num_epochs'] = 800
+        cfg['global']['num_steps'] = cfg['num_steps']
         cfg['global']['batch_size'] = {'train': 250, 'test': 500}
         cfg['global']['scheduler_name'] = 'None'
     return

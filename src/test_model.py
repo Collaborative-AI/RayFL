@@ -21,8 +21,8 @@ def main():
     process_control()
     seeds = list(range(cfg['init_seed'], cfg['init_seed'] + cfg['num_experiments']))
     for i in range(cfg['num_experiments']):
-        model_tag_list = [str(seeds[i]), cfg['control_name']]
-        cfg['tag'] = '_'.join([x for x in model_tag_list if x])
+        tag_list = [str(seeds[i]), cfg['control_name']]
+        cfg['tag'] = '_'.join([x for x in tag_list if x])
         print('Experiment: {}'.format(cfg['tag']))
         runExperiment()
     return
@@ -38,13 +38,14 @@ def runExperiment():
     best_path = os.path.join(tag_path, 'best')
     result_path = os.path.join('output', 'result', cfg['tag'])
     dataset = make_dataset(cfg['data_name'])
-    model = make_model(cfg['model_name'])
+    model = make_model(cfg)
     result = resume(best_path)
     cfg['iteration'] = result['cfg']['iteration']
     model = model.to(cfg['device'])
     model.load_state_dict(result['model'])
     dataset = process_dataset(dataset)
-    data_loader = make_data_loader(dataset, cfg[cfg['model_name']]['batch_size'])
+    data_loader = make_data_loader(dataset, cfg[cfg['model_name']]['batch_size'], cfg['num_steps'], cfg['iteration'],
+                                   cfg['step_period'])
     test_logger = make_logger(os.path.join(tag_path, 'logger', 'test', 'runs'))
     test(data_loader['test'], model, test_logger)
     result = resume(checkpoint_path)

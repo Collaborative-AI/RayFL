@@ -33,7 +33,7 @@ class Linear(nn.Module):
         return output
 
 
-def linear():
+def linear(cfg):
     data_shape = cfg['data_shape']
     target_size = cfg['target_size']
     model = Linear(data_shape, target_size)

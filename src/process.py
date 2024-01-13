@@ -38,20 +38,13 @@ def make_all_controls(mode):
         model_names = ['linear', 'mlp', 'cnn', 'resnet18']
         control_name = [[data_names, model_names]]
         controls = make_control(control_name)
-    elif mode == 'fl':
-        data_name = ['MNIST', 'CIFAR10']
-        model_name = ['linear', 'mlp', 'cnn', 'resnet18']
-        data_mode = ['100-horiz-iid', '100-horiz-noniid~c~2', '100-horiz-noniid~d~0.1', '100-horiz-noniid~d~0.3']
-        comm_mode = ['sync-0.1-5']
-        control_name = [[data_name, model_name, data_mode, comm_mode]]
-        controls = make_control(control_name)
     else:
         raise ValueError('Not valid mode')
     return controls
 
 
 def main():
-    modes = ['fl']
+    modes = ['base']
     controls = []
     for mode in modes:
         controls += make_all_controls(mode)
@@ -69,8 +62,8 @@ def tree():
 def process_result(controls):
     result = tree()
     for control in controls:
-        model_tag = '_'.join(control)
-        gather_result(list(control), model_tag, result)
+        tag = '_'.join(control)
+        gather_result(list(control), tag, result)
     summarize_result(None, result)
     save(result, os.path.join(result_path, 'processed_result'))
     processed_result = tree()
@@ -78,23 +71,23 @@ def process_result(controls):
     return processed_result
 
 
-def gather_result(control, model_tag, processed_result):
+def gather_result(control, tag, processed_result):
     if len(control) == 1:
         exp_idx = exp.index(control[0])
-        base_result_path_i = os.path.join(result_path, '{}'.format(model_tag))
+        base_result_path_i = os.path.join(result_path, '{}'.format(tag))
         if os.path.exists(base_result_path_i):
             base_result = load(base_result_path_i)
-            for split in base_result['logger_state_dict']:
-                for metric_name in base_result['logger_state_dict'][split]['mean']:
+            for split in base_result['logger']:
+                for metric_name in base_result['logger'][split]['mean']:
                     processed_result[split][metric_name]['mean'][exp_idx] \
-                        = base_result['logger_state_dict'][split]['mean'][metric_name]
-                for metric_name in base_result['logger_state_dict'][split]['history']:
+                        = base_result['logger'][split]['mean'][metric_name]
+                for metric_name in base_result['logger'][split]['history']:
                     processed_result[split][metric_name]['history'][exp_idx] \
-                        = base_result['logger_state_dict'][split]['history'][metric_name]
+                        = base_result['logger'][split]['history'][metric_name]
         else:
             print('Missing {}'.format(base_result_path_i))
     else:
-        gather_result([control[0]] + control[2:], model_tag, processed_result[control[1]])
+        gather_result([control[0]] + control[2:], tag, processed_result[control[1]])
     return
 
 
@@ -166,7 +159,7 @@ def make_vis_history(df_history):
     marker_dict = {'linear': 'o', 'mlp': 's', 'cnn': 'p', 'resnet18': 'd'}
     loc_dict = {'Accuracy': 'lower right', 'Loss': 'upper right'}
     fontsize_dict = {'legend': 12, 'label': 16, 'ticks': 16}
-    figsize = (5, 4)
+    figsize = (6.4, 4.8)
     fig = {}
     ax_dict_1 = {}
     for df_name in df_history:
@@ -184,7 +177,7 @@ def make_vis_history(df_history):
             y = df_history[df_name].iloc[0].to_numpy()
             y_err = df_history[df_name_std].iloc[0].to_numpy()
             x = np.arange(len(y))
-            xlabel = 'Communication Rounds'
+            xlabel = 'Epoch'
             pivot = model_name
             ylabel = metric_name
             ax_1.plot(x, y, label=label_dict[pivot], color=color_dict[pivot],

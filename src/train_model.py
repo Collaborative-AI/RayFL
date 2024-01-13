@@ -41,26 +41,27 @@ def runExperiment():
     best_path = os.path.join(tag_path, 'best')
     dataset = make_dataset(cfg['data_name'])
     dataset = process_dataset(dataset)
-    model = make_model(cfg['model_name'])
+    model = make_model(cfg)
     result = resume(checkpoint_path, resume_mode=cfg['resume_mode'])
     if result is None:
         cfg['iteration'] = 0
         model = model.to(cfg['device'])
-        optimizer = make_optimizer(model.parameters(), cfg['model_name'])
-        scheduler = make_scheduler(optimizer, cfg['model_name'])
+        optimizer = make_optimizer(model.parameters(), cfg[cfg['model_name']])
+        scheduler = make_scheduler(optimizer, cfg[cfg['model_name']])
         logger = make_logger(os.path.join(tag_path, 'logger', 'train', 'runs'))
     else:
         cfg['iteration'] = result['cfg']['iteration']
         model = model.to(cfg['device'])
-        optimizer = make_optimizer(model.parameters(), cfg['model_name'])
-        scheduler = make_scheduler(optimizer, cfg['model_name'])
+        optimizer = make_optimizer(model.parameters(), cfg[cfg['model_name']])
+        scheduler = make_scheduler(optimizer, cfg[cfg['model_name']])
         logger = make_logger(os.path.join(tag_path, 'logger', 'train', 'runs'))
         model.load_state_dict(result['model'])
         optimizer.load_state_dict(result['optimizer'])
         scheduler.load_state_dict(result['scheduler'])
         logger.load_state_dict(result['logger'])
         logger.reset()
-    data_loader = make_data_loader(dataset, cfg[cfg['model_name']]['batch_size'])
+    data_loader = make_data_loader(dataset, cfg[cfg['model_name']]['batch_size'], cfg['num_steps'], cfg['iteration'],
+                                   cfg['step_period'])
     data_iterator = enumerate(data_loader['train'])
     while cfg['iteration'] < cfg['num_steps']:
         train(data_iterator, model, optimizer, scheduler, logger)

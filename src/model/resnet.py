@@ -100,7 +100,7 @@ class ResNet(nn.Module):
         return output
 
 
-def resnet9():
+def resnet9(cfg):
     data_shape = cfg['data_shape']
     target_size = cfg['target_size']
     hidden_size = cfg['resnet9']['hidden_size']
@@ -109,7 +109,7 @@ def resnet9():
     return model
 
 
-def resnet18():
+def resnet18(cfg):
     data_shape = cfg['data_shape']
     target_size = cfg['target_size']
     hidden_size = cfg['resnet18']['hidden_size']

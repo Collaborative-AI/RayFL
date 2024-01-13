@@ -6,17 +6,16 @@ import torch
 from config import cfg
 from dataset import make_data_loader, split_dataset
 from model import make_model, make_optimizer, make_batchnorm
-from metric import make_metric, make_logger
+from metric import make_logger
 from module import to_device
 
 
 class Controller:
-    def __init__(self, data_split, model, optimizer, scheduler, metric, logger):
+    def __init__(self, data_split, model, optimizer, scheduler, logger):
         self.data_split = data_split
         self.model = model
         self.optimizer = optimizer
         self.scheduler = scheduler
-        self.metric = metric
         self.logger = logger
         self.worker = {}
         self.parallel_step_size = 10
@@ -26,7 +25,7 @@ class Controller:
         if not ray.is_initialized():
             ray.init()
         self.worker['server'] = Server(0, dataset, self.data_split, self.model, self.optimizer,
-                                       self.scheduler, self.metric, self.logger)
+                                       self.scheduler, self.logger)
         self.worker['client'] = []
         for i in range(len(self.data_split['data'])):
             dataset_i = {k: split_dataset(dataset[k], self.data_split['data'][i][k]) for k in dataset}
@@ -45,7 +44,6 @@ class Controller:
         self.optimizer['global'].load_state_dict(self.worker['server'].optimizer['global'].state_dict())
         self.scheduler['local'].load_state_dict(self.worker['server'].scheduler['local'].state_dict())
         self.scheduler['global'].load_state_dict(self.worker['server'].scheduler['global'].state_dict())
-        self.metric.load_state_dict(self.worker['server'].metric.state_dict())
         self.logger.load_state_dict(self.worker['server'].logger.state_dict())
         return
 
@@ -69,23 +67,19 @@ class Controller:
     def scheduler_state_dict(self):
         return {'local': self.scheduler['local'].state_dict(), 'global': self.scheduler['global'].state_dict()}
 
-    def metric_state_dict(self):
-        return self.metric.state_dict()
-
     def logger_state_dict(self):
         return self.logger.state_dict()
 
 
 class Server:
-    def __init__(self, id, dataset, data_split, model, optimizer, scheduler, metric, logger):
+    def __init__(self, id, dataset, data_split, model, optimizer, scheduler, logger):
         self.id = id
         self.dataset = dataset
-        self.data_loader = make_data_loader(self.dataset, cfg['global']['batch_size'], cfg['global']['shuffle'])
+        self.data_loader = make_data_loader(self.dataset, cfg['global']['batch_size'], shuffle=False)
         self.data_split = data_split
         self.model = model
         self.optimizer = optimizer
         self.scheduler = scheduler
-        self.metric = metric
         self.logger = logger
 
     def synchronize(self, active_client_id, model_state_dict):
@@ -126,12 +120,12 @@ class Server:
         _time = (time.time() - start_time)
         exp_finished_time = datetime.timedelta(
             seconds=round((cfg['global']['num_epochs'] - cfg['epoch']) * _time * num_active_clients))
-        info = {'info': ['Model: {}'.format(cfg['model_tag']),
+        info = {'info': ['Model: {}'.format(cfg['tag']),
                          'Train Epoch (C): {}'.format(cfg['epoch']),
                          'Learning rate: {:.6f}'.format(lr),
                          'Experiment Finished Time: {}'.format(exp_finished_time)]}
         self.logger.append(info, 'train')
-        print(self.logger.write('train', self.metric.metric_name['train']))
+        print(self.logger.write('train'))
         return active_client_id, model_state_dict
 
     def make_batchnorm_server(self, momentum, track_running_stats):
@@ -140,7 +134,6 @@ class Server:
             if flag and track_running_stats:
                 self.model.train(True)
                 for i, input in enumerate(self.data_loader['train']):
-                    input = collate(input)
                     self.model(input)
         return
 
@@ -148,17 +141,16 @@ class Server:
         with torch.no_grad():
             self.model.train(False)
             for i, input in enumerate(self.data_loader['test']):
-                input = collate(input)
                 input_size = input['data'].size(0)
                 output = self.model(input)
-                evaluation = self.metric.evaluate('test', 'batch', input, output)
+                evaluation = self.logger.evaluate('test', 'batch', input, output)
                 self.logger.append(evaluation, 'test', input_size)
-            evaluation = self.metric.evaluate('test', 'full')
+            evaluation = self.logger.evaluate('test', 'full')
             self.logger.append(evaluation, 'test', input_size)
-            info = {'info': ['Model: {}'.format(cfg['model_tag']),
+            info = {'info': ['Model: {}'.format(cfg['tag']),
                              'Test Epoch: {}({:.0f}%)'.format(cfg['epoch'], 100.)]}
             self.logger.append(info, 'test')
-            print(self.logger.write('test', self.metric.metric_name['test']))
+            print(self.logger.write('test'))
         return
 
     def make_batchnorm_client(self, client, parallel_step_size, momentum, track_running_stats):
@@ -209,9 +201,9 @@ class Server:
         logger_state_dict = [result[i]['logger_state_dict'] for i in range(len(result))]
         for i in range(len(logger_state_dict)):
             self.logger.update_state_dict(logger_state_dict[i])
-        info = {'info': ['Model: {}'.format(cfg['model_tag']), 'Test Epoch: {}({:.0f}%)'.format(cfg['epoch'], 100.)]}
+        info = {'info': ['Model: {}'.format(cfg['tag']), 'Test Epoch: {}({:.0f}%)'.format(cfg['epoch'], 100.)]}
         self.logger.append(info, 'test')
-        print(self.logger.write('test', self.metric.metric_name['test']))
+        print(self.logger.write('test'))
         return
 
 
@@ -221,7 +213,7 @@ class Client:
         self.id = id
         self.dataset = dataset
         self.cfg = cfg
-        self.data_loader = make_data_loader(self.dataset, cfg['local']['batch_size'], cfg['local']['shuffle'])
+        self.data_loader = make_data_loader(self.dataset, cfg['local']['batch_size'], cfg['local']['num_steps'], 0)
 
     def train(self, model_state_dict, lr):
         model = make_model(self.cfg).to(self.cfg['device'])
@@ -230,12 +222,10 @@ class Client:
         optimizer_state_dict = optimizer.state_dict()
         optimizer_state_dict['param_groups'][0]['lr'] = lr
         optimizer.load_state_dict(optimizer_state_dict)
-        metric = make_metric(self.cfg['data_name'], {'train': ['Loss'], 'test': ['Loss']})
         logger = make_logger()
         model.train(True)
         for epoch in range(1, self.cfg['local']['num_update'] + 1):
             for i, input in enumerate(self.data_loader['train']):
-                input = collate(input)
                 input_size = input['data'].size(0)
                 input = to_device(input, cfg['device'])
                 output = model(input)
@@ -243,7 +233,7 @@ class Client:
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
                 optimizer.step()
                 optimizer.zero_grad()
-                evaluation = metric.evaluate('train', 'batch', input, output)
+                evaluation = logger.evaluate('train', 'batch', input, output)
                 logger.append(evaluation, 'train', n=input_size)
         model = model.to('cpu')
         result = {'model_state_dict': model.state_dict(), 'logger_state_dict': logger.state_dict()}
@@ -258,7 +248,6 @@ class Client:
                 model.load_state_dict(model_state_dict)
                 model.train(True)
                 for i, input in enumerate(self.data_loader['train']):
-                    input = collate(input)
                     input = to_device(input, cfg['device'])
                     model(input)
                 model = model.to('cpu')
@@ -271,22 +260,20 @@ class Client:
         with torch.no_grad():
             model = make_model(self.cfg).to(self.cfg['device'])
             model.load_state_dict(model_state_dict)
-            metric = make_metric(self.cfg['data_name'], {'train': ['Loss'], 'test': ['Loss']})
             logger = make_logger()
             model.train(False)
             for i, input in enumerate(self.data_loader['test']):
-                input = collate(input)
                 input = to_device(input, cfg['device'])
                 input_size = input['data'].size(0)
                 output = model(input)
-                evaluation = metric.evaluate('test', 'batch', input, output)
+                evaluation = logger.evaluate('test', 'batch', input, output)
                 logger.append(evaluation, 'test', input_size)
-            evaluation = metric.evaluate('test', 'full')
+            evaluation = logger.evaluate('test', 'full')
             logger.append(evaluation, 'test', input_size)
         result = {'logger_state_dict': logger.state_dict()}
         return result
 
 
-def make_controller(data_split, model, optimizer, scheduler, metric, logger):
-    controller = Controller(data_split, model, optimizer, scheduler, metric, logger)
+def make_controller(data_split, model, optimizer, scheduler, logger):
+    controller = Controller(data_split, model, optimizer, scheduler, logger)
     return controller

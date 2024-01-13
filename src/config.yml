@@ -4,13 +4,13 @@ control:
   data_name: MNIST
   model_name: linear
   data_mode:
-    num_split: 2
+    num_splits: 2
     split_mode: horiz
     stat_mode: iid
   comm_mode:
     agg_mode: sync
     active_ratio: 1.0
-    num_update: 5
+    num_steps: 5
   test_mode: server
 # experiment
 pin_memory: True

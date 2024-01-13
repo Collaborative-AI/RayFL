@@ -21,22 +21,22 @@ def main():
     process_control()
     seeds = list(range(cfg['init_seed'], cfg['init_seed'] + cfg['num_experiments']))
     for i in range(cfg['num_experiments']):
-        model_tag_list = [str(seeds[i]), cfg['control_name']]
-        cfg['model_tag'] = '_'.join([x for x in model_tag_list if x])
-        print('Experiment: {}'.format(cfg['model_tag']))
+        ['tag']_list = [str(seeds[i]), cfg['control_name']]
+        cfg['tag'] = '_'.join([x for x in ['tag']_list if x])
+        print('Experiment: {}'.format(cfg['tag']))
         runExperiment()
     return
 
 
 def runExperiment():
-    cfg['seed'] = int(cfg['model_tag'].split('_')[0])
+    cfg['seed'] = int(cfg['tag'].split('_')[0])
     torch.manual_seed(cfg['seed'])
     torch.cuda.manual_seed(cfg['seed'])
     model_path = os.path.join('output', 'model')
     result_path = os.path.join('output', 'result')
-    model_tag_path = os.path.join(model_path, cfg['model_tag'])
-    checkpoint_path = os.path.join(model_tag_path, 'checkpoint')
-    best_path = os.path.join(model_tag_path, 'best')
+    ['tag']_path = os.path.join(model_path, cfg['tag'])
+    checkpoint_path = os.path.join(['tag']_path, 'checkpoint')
+    best_path = os.path.join(['tag']_path, 'best')
     dataset = make_dataset(cfg['data_name'])
     dataset = process_dataset(dataset)
     model = make_model(cfg)
@@ -45,14 +45,14 @@ def runExperiment():
     data_split = result['data_split']
     model.load_state_dict(result['model_state_dict'])
     cfg['epoch'] = result['epoch']
-    test_logger = make_logger(os.path.join('output', 'runs', 'test_{}'.format(cfg['model_tag'])))
+    test_logger = make_logger(os.path.join('output', 'runs', 'test_{}'.format(cfg['tag'])))
     controller = make_controller(data_split, model, None, None, metric, test_logger)
     controller.make_worker(dataset)
     controller.test()
     result = resume(os.path.join(checkpoint_path, 'model'))
     result = {'cfg': cfg, 'epoch': cfg['epoch'], 'logger_state_dict': {'train': result['logger_state_dict'],
                                                                        'test': test_logger.state_dict()}}
-    save(result, os.path.join(result_path, cfg['model_tag']))
+    save(result, os.path.join(result_path, cfg['tag']))
     return
 
 
