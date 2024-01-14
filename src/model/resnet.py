@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from .model import init_param, make_loss
-from config import cfg
 
 
 class Block(nn.Module):

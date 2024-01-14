@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import math
-from config import cfg
 from .model import init_param, make_loss
 
 

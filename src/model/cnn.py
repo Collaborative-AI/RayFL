@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-from config import cfg
 from .model import init_param, make_loss
 
 
@@ -42,7 +41,7 @@ class CNN(nn.Module):
         return output
 
 
-def cnn():
+def cnn(cfg):
     data_shape = cfg['data_shape']
     target_size = cfg['target_size']
     hidden_size = cfg['cnn']['hidden_size']

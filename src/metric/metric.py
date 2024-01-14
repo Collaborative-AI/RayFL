@@ -1,7 +1,6 @@
 import torch
 import torch.nn.functional as F
 from collections import defaultdict
-# from config import cfg
 from module import recur
 
 

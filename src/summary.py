@@ -32,12 +32,12 @@ def runExperiment():
     cfg['seed'] = int(cfg['tag'].split('_')[0])
     torch.manual_seed(cfg['seed'])
     torch.cuda.manual_seed(cfg['seed'])
-    path = os.path.join('output', 'exp')
-    tag_path = os.path.join(path, cfg['tag'])
+    cfg['path'] = os.path.join('output', 'exp')
+    cfg['tag_path'] = os.path.join(cfg['path'], cfg['tag'])
     dataset = make_dataset(cfg['data_name'])
     cfg['iteration'] = 0
     dataset = process_dataset(dataset)
-    model = make_model(cfg)
+    model = make_model(cfg['model'])
     model = model.to(cfg['device'])
     batch_size = {'train': 2, 'test': 2}
     data_loader = make_data_loader(dataset, batch_size)
@@ -47,7 +47,7 @@ def runExperiment():
                       col_names=['input_size', 'output_size', 'num_params', 'params_percent', 'kernel_size',
                                  'mult_adds', 'trainable'])
     print(content)
-    save(content, os.path.join(tag_path, 'summary', cfg['tag']))
+    save(content, os.path.join(cfg['tag_path'], 'summary'))
     return
 
 
