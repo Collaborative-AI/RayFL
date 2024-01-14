@@ -1,7 +1,7 @@
 # uncomment the following 2 lines to run it locally
 import sys
-sys.path.insert(0, '/RayFL/src')
 
+sys.path.insert(0, '/RayFL/src')
 
 import argparse
 import os
@@ -26,11 +26,11 @@ process_args(args)
 
 
 def main():
-    process_control()
     seeds = list(range(cfg['init_seed'], cfg['init_seed'] + cfg['num_experiments']))
     for i in range(cfg['num_experiments']):
         tag_list = [str(seeds[i]), cfg['control_name']]
         cfg['tag'] = '_'.join([x for x in tag_list if x])
+        process_control()
         print('Experiment: {}'.format(cfg['tag']))
         runExperiment()
     return
@@ -48,23 +48,27 @@ def runExperiment():
     dataset = process_dataset(dataset)
     model = make_model(cfg)
     data_split = make_split(dataset, cfg['data_mode']['num_splits'], cfg['data_mode']['split_mode'],
-                            stat_mode=cfg['data_mode']['stat_mode'])
+                            cfg['data_mode']['stat_mode'])
     result = resume(os.path.join(checkpoint_path, 'model'), resume_mode=cfg['resume_mode'])
     if result is None:
         cfg['iteration'] = 0
         model = model.to(cfg['device'])
-        optimizer = {'local': make_optimizer([torch.nn.Parameter(torch.tensor([0.]))], cfg['local']),
-                     'global': make_optimizer(model.parameters(), cfg['global'])}
-        scheduler = {'local': make_scheduler(optimizer['local'], cfg['local']),
-                     'global': make_scheduler(optimizer['global'], cfg['global'])}
+        optimizer = {
+            'local': make_optimizer([torch.nn.Parameter(torch.tensor([0.]))],
+                                    cfg[cfg['tag']]['local']['optimizer']),
+            'global': make_optimizer(model.parameters(), cfg[cfg['tag']]['global']['optimizer'])}
+        scheduler = {'local': make_scheduler(optimizer['local'], cfg[cfg['tag']]['local']['optimizer']),
+                     'global': make_scheduler(optimizer['global'],  cfg[cfg['tag']]['global']['optimizer'])}
         logger = make_logger(os.path.join('output', 'runs', 'train_{}'.format(cfg['tag'])))
     else:
         cfg['iteration'] = result['cfg']['iteration']
         model = model.to(cfg['device'])
-        optimizer = {'local': make_optimizer([torch.nn.Parameter(torch.tensor([0.]))], cfg['local']),
-                     'global': make_optimizer(model.parameters(), cfg['global'])}
-        scheduler = {'local': make_scheduler(optimizer['local'], cfg['local']),
-                     'global': make_scheduler(optimizer['global'], cfg['global'])}
+        optimizer = {
+            'local': make_optimizer([torch.nn.Parameter(torch.tensor([0.]))],
+                                    cfg[cfg['tag']]['local']['optimizer']),
+            'global': make_optimizer(model.parameters(), cfg[cfg['tag']]['global']['optimizer'])}
+        scheduler = {'local': make_scheduler(optimizer['local'], cfg[cfg['tag']]['local']['optimizer']),
+                     'global': make_scheduler(optimizer['global'],  cfg[cfg['tag']]['global']['optimizer'])}
         logger = make_logger(os.path.join('output', 'runs', 'train_{}'.format(cfg['tag'])))
         model.load_state_dict(result['model'])
         optimizer['local'].load_state_dict(result['optimize']['local'])

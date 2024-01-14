@@ -18,18 +18,17 @@ class Controller:
         self.scheduler = scheduler
         self.logger = logger
         self.worker = {}
-        self.parallel_step_size = 10
 
     def make_worker(self, dataset):
         # Initialize Ray if not already done
         if not ray.is_initialized():
             ray.init()
         self.worker['server'] = Server(0, dataset, self.data_split, self.model, self.optimizer,
-                                       self.scheduler, self.logger)
+                                       self.scheduler, self.logger, cfg[cfg['tag']]['global'])
         self.worker['client'] = []
         for i in range(len(self.data_split['data'])):
             dataset_i = {k: split_dataset(dataset[k], self.data_split['data'][i][k]) for k in dataset}
-            client_i = Client.remote(i, dataset_i, cfg)
+            client_i = Client.remote(i, dataset_i, cfg[cfg['tag']]['local'])
             self.worker['client'].append(client_i)
         return
 
@@ -52,8 +51,8 @@ class Controller:
             self.worker['server'].make_batchnorm_server(None, True)
             self.worker['server'].test_server()
         elif cfg['test_mode'] == 'client':
-            self.worker['server'].make_batchnorm_client(self.worker['client'], self.parallel_step_size, None, True)
-            self.worker['server'].test_client(self.worker['client'], self.parallel_step_size)
+            self.worker['server'].make_batchnorm_client(self.worker['client'], None, True)
+            self.worker['server'].test_client(self.worker['client'])
         else:
             raise ValueError('Not valid test mode')
         return
@@ -72,15 +71,16 @@ class Controller:
 
 
 class Server:
-    def __init__(self, id, dataset, data_split, model, optimizer, scheduler, logger):
+    def __init__(self, id, dataset, data_split, model, optimizer, scheduler, logger, cfg):
         self.id = id
         self.dataset = dataset
-        self.data_loader = make_data_loader(self.dataset, cfg['global']['batch_size'], shuffle=False)
         self.data_split = data_split
         self.model = model
         self.optimizer = optimizer
         self.scheduler = scheduler
         self.logger = logger
+        self.cfg = cfg
+        self.data_loader = make_data_loader(self.dataset, self.cfg['optimizer']['batch_size'], shuffle=False)
 
     def synchronize(self, active_client_id, model_state_dict):
         with torch.no_grad():
@@ -105,7 +105,7 @@ class Server:
     def train(self, client):
         start_time = time.time()
         lr = self.optimizer['local'].param_groups[0]['lr']
-        num_active_clients = int(np.ceil(cfg['comm_mode']['active_ratio'] * len(client)))
+        num_active_clients = int(np.ceil(cfg['dist_mode']['active_ratio'] * len(client)))
         active_client_id = torch.randperm(len(client))[:num_active_clients]
         active_client = [client[i] for i in range(len(client)) if i in active_client_id]
         result = []
@@ -153,11 +153,12 @@ class Server:
             print(self.logger.write('test'))
         return
 
-    def make_batchnorm_client(self, client, parallel_step_size, momentum, track_running_stats):
+    def make_batchnorm_client(self, client, momentum, track_running_stats):
+        num_active_clients = int(np.ceil(cfg['dist_mode']['active_ratio'] * len(client)))
         result = []
-        for i in range(0, len(client), parallel_step_size):
+        for i in range(0, len(client), num_active_clients):
             result_i = []
-            upper_bound = min(i + parallel_step_size, len(client))
+            upper_bound = min(i + num_active_clients, len(client))
             for j in range(i, upper_bound):
                 result_i_j = client[i + j].make_batchnorm.remote(self.model.state_dict(), momentum, track_running_stats)
                 result_i.append(result_i_j)
@@ -188,11 +189,12 @@ class Server:
                 self.model.load_state_dict(model_state_dict_)
         return
 
-    def test_client(self, client, parallel_step_size):
+    def test_client(self, client):
+        num_active_clients = int(np.ceil(cfg['dist_mode']['active_ratio'] * len(client)))
         result = []
-        for i in range(0, len(client), parallel_step_size):
+        for i in range(0, len(client), num_active_clients):
             result_i = []
-            upper_bound = min(i + parallel_step_size, len(client))
+            upper_bound = min(i + num_active_clients, len(client))
             for j in range(i, upper_bound):
                 result_i_j = client[i + j].test.remote(self.model.state_dict())
                 result_i.append(result_i_j)
@@ -213,7 +215,8 @@ class Client:
         self.id = id
         self.dataset = dataset
         self.cfg = cfg
-        self.data_loader = make_data_loader(self.dataset, cfg['local']['batch_size'], cfg['local']['num_steps'], 0)
+        self.data_loader = make_data_loader(self.dataset, self.cfg['optimizer']['batch_size'],
+                                            self.cfg['optimizer']['num_steps'], 0)
 
     def train(self, model_state_dict, lr):
         model = make_model(self.cfg).to(self.cfg['device'])

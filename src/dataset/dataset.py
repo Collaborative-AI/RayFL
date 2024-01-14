@@ -122,9 +122,8 @@ def process_dataset(dataset):
     return processed_dataset
 
 
-def make_split(dataset, num_splits, split_mode, **kwargs):
+def make_split(dataset, num_splits, split_mode, stat_mode):
     if split_mode == 'horiz':
-        stat_mode = kwargs['stat_mode']
         if stat_mode == 'iid':
             data_split, target_split = iid(dataset, num_splits)
         elif 'noniid' in stat_mode:

@@ -18,11 +18,11 @@ process_args(args)
 
 
 def main():
-    process_control()
     seeds = list(range(cfg['init_seed'], cfg['init_seed'] + cfg['num_experiments']))
     for i in range(cfg['num_experiments']):
         tag_list = [str(seeds[i]), cfg['control_name']]
         cfg['tag'] = '_'.join([x for x in tag_list if x])
+        process_control()
         print('Experiment: {}'.format(cfg['tag']))
         runExperiment()
     return
@@ -44,8 +44,7 @@ def runExperiment():
     model = model.to(cfg['device'])
     model.load_state_dict(result['model'])
     dataset = process_dataset(dataset)
-    data_loader = make_data_loader(dataset, cfg[cfg['model_name']]['batch_size'], cfg['num_steps'], cfg['iteration'],
-                                   cfg['step_period'])
+    data_loader = make_data_loader(dataset, cfg[cfg['tag']]['optimizer']['batch_size'])
     test_logger = make_logger(os.path.join(tag_path, 'logger', 'test', 'runs'))
     test(data_loader['test'], model, test_logger)
     result = resume(checkpoint_path)

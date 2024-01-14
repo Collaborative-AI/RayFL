@@ -7,11 +7,12 @@ control:
     num_splits: 2
     split_mode: horiz
     stat_mode: iid
-  comm_mode:
+  dist_mode:
     agg_mode: sync
     active_ratio: 1.0
+    batch_size: 10
     num_steps: 5
-  test_mode: server
+    eval_mode: server
 # experiment
 pin_memory: True
 num_workers: 0

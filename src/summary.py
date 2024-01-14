@@ -18,11 +18,11 @@ process_args(args)
 
 
 def main():
-    process_control()
     seeds = list(range(cfg['init_seed'], cfg['init_seed'] + cfg['num_experiments']))
     for i in range(cfg['num_experiments']):
-        ['tag']_list = [str(seeds[i]), cfg['control_name']]
-        cfg['tag'] = '_'.join([x for x in ['tag']_list if x])
+        tag_list = [str(seeds[i]), cfg['control_name']]
+        cfg['tag'] = '_'.join([x for x in tag_list if x])
+        process_control()
         print('Experiment: {}'.format(cfg['tag']))
         runExperiment()
     return
@@ -37,18 +37,17 @@ def runExperiment():
     dataset = make_dataset(cfg['data_name'])
     cfg['iteration'] = 0
     dataset = process_dataset(dataset)
-    batch_size = 2
-    cfg[cfg['model_name']]['batch_size']['train'] = batch_size
-    data_loader = make_data_loader(dataset, cfg[cfg['model_name']]['batch_size'])
+    model = make_model(cfg)
+    model = model.to(cfg['device'])
+    batch_size = {'train': 2, 'test': 2}
+    data_loader = make_data_loader(dataset, batch_size)
     input = next(iter(data_loader['train']))
     input = to_device(input, cfg['device'])
-    model = make_model(cfg['model_name'])
-    model = model.to(cfg['device'])
     content = summary(model, input_data=[{'data': input['data']}], depth=50,
                       col_names=['input_size', 'output_size', 'num_params', 'params_percent', 'kernel_size',
                                  'mult_adds', 'trainable'])
     print(content)
-    save(content, os.path.join(tag_path, 'summary', '{}'.format(cfg['tag'])))
+    save(content, os.path.join(tag_path, 'summary', cfg['tag']))
     return
 
 
