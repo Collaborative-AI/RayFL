@@ -35,26 +35,27 @@ def runExperiment():
     cfg['seed'] = int(cfg['tag'].split('_')[0])
     torch.manual_seed(cfg['seed'])
     torch.cuda.manual_seed(cfg['seed'])
-    path = os.path.join('output', 'exp')
-    tag_path = os.path.join(path, cfg['tag'])
-    checkpoint_path = os.path.join(tag_path, 'checkpoint')
-    best_path = os.path.join(tag_path, 'best')
+    cfg['path'] = os.path.join('output', 'exp')
+    cfg['tag_path'] = os.path.join(cfg['path'], cfg['tag'])
+    cfg['checkpoint_path'] = os.path.join(cfg['tag_path'], 'checkpoint')
+    cfg['best_path'] = os.path.join(cfg['tag_path'], 'best')
+    cfg['logger_path'] = os.path.join(cfg['tag_path'], 'logger', 'train', 'runs')
     dataset = make_dataset(cfg['data_name'])
     dataset = process_dataset(dataset)
-    model = make_model(cfg)
-    result = resume(checkpoint_path, resume_mode=cfg['resume_mode'])
+    model = make_model(cfg['model'])
+    result = resume(cfg['checkpoint_path'], resume_mode=cfg['resume_mode'])
     if result is None:
         cfg['iteration'] = 0
         model = model.to(cfg['device'])
         optimizer = make_optimizer(model.parameters(), cfg[cfg['tag']]['optimizer'])
         scheduler = make_scheduler(optimizer, cfg[cfg['tag']]['optimizer'])
-        logger = make_logger(os.path.join(tag_path, 'logger', 'train', 'runs'))
+        logger = make_logger(cfg['data_name'], cfg['logger_path'])
     else:
         cfg['iteration'] = result['cfg']['iteration']
         model = model.to(cfg['device'])
         optimizer = make_optimizer(model.parameters(), cfg[cfg['tag']]['optimizer'])
         scheduler = make_scheduler(optimizer, cfg[cfg['tag']]['optimizer'])
-        logger = make_logger(os.path.join(tag_path, 'logger', 'train', 'runs'))
+        logger = make_logger(cfg['data_name'], cfg['logger_path'])
         model.load_state_dict(result['model'])
         optimizer.load_state_dict(result['optimizer'])
         scheduler.load_state_dict(result['scheduler'])
@@ -70,9 +71,9 @@ def runExperiment():
         result = {'cfg': cfg, 'model': model.state_dict(),
                   'optimizer': optimizer.state_dict(), 'scheduler': scheduler.state_dict(),
                   'logger': logger.state_dict()}
-        check(result, checkpoint_path)
+        check(result, cfg['checkpoint_path'])
         if logger.compare('test'):
-            shutil.copytree(checkpoint_path, best_path, dirs_exist_ok=True)
+            shutil.copytree(cfg['checkpoint_path'], cfg['best_path'], dirs_exist_ok=True)
         logger.reset()
     return
 

@@ -40,16 +40,17 @@ def runExperiment():
     cfg['seed'] = int(cfg['tag'].split('_')[0])
     torch.manual_seed(cfg['seed'])
     torch.cuda.manual_seed(cfg['seed'])
-    path = os.path.join('output', 'exp')
-    tag_path = os.path.join(path, cfg['tag'])
-    checkpoint_path = os.path.join(tag_path, 'checkpoint')
-    best_path = os.path.join(tag_path, 'best')
+    cfg['path'] = os.path.join('output', 'exp')
+    cfg['tag_path'] = os.path.join(cfg['path'], cfg['tag'])
+    cfg['checkpoint_path'] = os.path.join(cfg['tag_path'], 'checkpoint')
+    cfg['best_path'] = os.path.join(cfg['tag_path'], 'best')
+    cfg['logger_path'] = os.path.join(cfg['tag_path'], 'logger', 'train', 'runs')
     dataset = make_dataset(cfg['data_name'])
     dataset = process_dataset(dataset)
-    model = make_model(cfg)
+    model = make_model(cfg['model'])
     data_split = make_split(dataset, cfg['data_mode']['num_splits'], cfg['data_mode']['split_mode'],
                             cfg['data_mode']['stat_mode'])
-    result = resume(os.path.join(checkpoint_path, 'model'), resume_mode=cfg['resume_mode'])
+    result = resume(os.path.join(cfg['checkpoint_path'], 'model'), resume_mode=cfg['resume_mode'])
     if result is None:
         cfg['iteration'] = 0
         model = model.to(cfg['device'])
@@ -59,7 +60,7 @@ def runExperiment():
             'global': make_optimizer(model.parameters(), cfg[cfg['tag']]['global']['optimizer'])}
         scheduler = {'local': make_scheduler(optimizer['local'], cfg[cfg['tag']]['local']['optimizer']),
                      'global': make_scheduler(optimizer['global'],  cfg[cfg['tag']]['global']['optimizer'])}
-        logger = make_logger(os.path.join('output', 'runs', 'train_{}'.format(cfg['tag'])))
+        logger = make_logger(cfg['data_name'], cfg['logger_path'])
     else:
         cfg['iteration'] = result['cfg']['iteration']
         model = model.to(cfg['device'])
@@ -69,7 +70,7 @@ def runExperiment():
             'global': make_optimizer(model.parameters(), cfg[cfg['tag']]['global']['optimizer'])}
         scheduler = {'local': make_scheduler(optimizer['local'], cfg[cfg['tag']]['local']['optimizer']),
                      'global': make_scheduler(optimizer['global'],  cfg[cfg['tag']]['global']['optimizer'])}
-        logger = make_logger(os.path.join('output', 'runs', 'train_{}'.format(cfg['tag'])))
+        logger = make_logger(cfg['data_name'], cfg['logger_path'])
         model.load_state_dict(result['model'])
         optimizer['local'].load_state_dict(result['optimize']['local'])
         optimizer['global'].load_state_dict(result['optimize']['global'])
@@ -87,9 +88,9 @@ def runExperiment():
                   'optimizer': controller.optimizer_state_dict(),
                   'scheduler': controller.scheduler_state_dict(),
                   'logger': controller.logger_state_dict()}
-        check(result, checkpoint_path)
+        check(result, cfg['checkpoint_path'])
         if logger.compare('test'):
-            shutil.copytree(checkpoint_path, best_path, dirs_exist_ok=True)
+            shutil.copytree(cfg['checkpoint_path'], cfg['best_path'], dirs_exist_ok=True)
         logger.reset()
     return
 

@@ -11,7 +11,7 @@ control:
     agg_mode: sync
     active_ratio: 1.0
     batch_size: 10
-    num_steps: 5
+    num_steps: 10
     eval_mode: server
 # experiment
 pin_memory: True

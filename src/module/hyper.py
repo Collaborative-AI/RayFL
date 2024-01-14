@@ -5,6 +5,13 @@ def process_control():
     cfg['data_name'] = cfg['control']['data_name']
     cfg['model_name'] = cfg['control']['model_name']
 
+    cfg['batch_size'] = 250
+    cfg['step_period'] = 1
+    cfg['num_steps'] = 80000
+    cfg['eval_period'] = 200
+    # cfg['num_epochs'] = 400
+    cfg['collate_mode'] = 'dict'
+
     cfg['model'] = {}
     cfg['model']['model_name'] = cfg['model_name']
     data_shape = {'MNIST': [1, 28, 28], 'FashionMNIST': [1, 28, 28], 'SVHN': [3, 32, 32], 'CIFAR10': [3, 32, 32],
@@ -12,20 +19,13 @@ def process_control():
     target_size = {'MNIST': 10, 'FashionMNIST': 10, 'SVHN': 10, 'CIFAR10': 10, 'CIFAR100': 100}
     cfg['model']['data_shape'] = data_shape[cfg['data_name']]
     cfg['model']['target_size'] = target_size[cfg['data_name']]
-    cfg['model']['collate_mode'] = 'dict'
-    cfg['linear'] = {}
-    cfg['mlp'] = {'hidden_size': 128, 'scale_factor': 2, 'num_layers': 2, 'activation': 'relu'}
-    cfg['cnn'] = {'hidden_size': [64, 128, 256, 512]}
-    cfg['resnet9'] = {'hidden_size': [64, 128, 256, 512]}
-    cfg['resnet18'] = {'hidden_size': [64, 128, 256, 512]}
-    cfg['wresnet28x2'] = {'depth': 28, 'widen_factor': 2, 'drop_rate': 0.0}
-    cfg['wresnet28x8'] = {'depth': 28, 'widen_factor': 8, 'drop_rate': 0.0}
-
-    cfg['batch_size'] = 250
-    cfg['step_period'] = 1
-    cfg['num_steps'] = 80000
-    cfg['eval_period'] = 200
-    # cfg['num_epochs'] = 400
+    cfg['model']['linear'] = {}
+    cfg['model']['mlp'] = {'hidden_size': 128, 'scale_factor': 2, 'num_layers': 2, 'activation': 'relu'}
+    cfg['model']['cnn'] = {'hidden_size': [64, 128, 256, 512]}
+    cfg['model']['resnet9'] = {'hidden_size': [64, 128, 256, 512]}
+    cfg['model']['resnet18'] = {'hidden_size': [64, 128, 256, 512]}
+    cfg['model']['wresnet28x2'] = {'depth': 28, 'widen_factor': 2, 'drop_rate': 0.0}
+    cfg['model']['wresnet28x8'] = {'depth': 28, 'widen_factor': 8, 'drop_rate': 0.0}
 
     tag = cfg['tag']
     cfg[tag] = {}
@@ -49,7 +49,8 @@ def process_control():
         cfg['dist_mode']['num_steps'] = int(cfg['dist_mode']['num_steps'])
 
         cfg[tag]['local'] = {}
-        cfg[tag]['local']['model'] = {}
+        cfg[tag]['local']['device'] = cfg['device']
+        cfg[tag]['local']['model'] = cfg['model']
         cfg[tag]['local']['dist_mode'] = cfg['dist_mode']
         cfg[tag]['local']['optimizer'] = {}
         cfg[tag]['local']['optimizer']['optimizer_name'] = 'SGD'

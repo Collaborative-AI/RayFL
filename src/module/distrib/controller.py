@@ -25,12 +25,20 @@ class Controller:
             ray.init()
         self.worker['server'] = Server(0, dataset, self.data_split, self.model, self.optimizer,
                                        self.scheduler, self.logger, cfg[cfg['tag']]['global'])
+        local_cfg = self.make_local_cfg()
         self.worker['client'] = []
         for i in range(len(self.data_split['data'])):
             dataset_i = {k: split_dataset(dataset[k], self.data_split['data'][i][k]) for k in dataset}
-            client_i = Client.remote(i, dataset_i, cfg[cfg['tag']]['local'])
+            client_i = Client.remote(i, dataset_i, local_cfg)
             self.worker['client'].append(client_i)
         return
+
+    def make_local_cfg(self):
+        local_cfg = cfg[cfg['tag']]['local']
+        local_cfg['profile'] = cfg['profile']
+        local_cfg['data_name'] = cfg['data_name']
+        local_cfg['logger_path'] = cfg['logger_path']
+        return local_cfg
 
     def train(self):
         active_client_id, model_state_dict = self.worker['server'].train(self.worker['client'])
@@ -47,10 +55,10 @@ class Controller:
         return
 
     def test(self):
-        if cfg['test_mode'] == 'server':
+        if cfg['dist_mode']['eval_mode'] == 'server':
             self.worker['server'].make_batchnorm_server(None, True)
             self.worker['server'].test_server()
-        elif cfg['test_mode'] == 'client':
+        elif cfg['dist_mode']['eval_mode'] == 'client':
             self.worker['server'].make_batchnorm_client(self.worker['client'], None, True)
             self.worker['server'].test_client(self.worker['client'])
         else:
@@ -104,10 +112,10 @@ class Server:
 
     def train(self, client):
         start_time = time.time()
-        lr = self.optimizer['local'].param_groups[0]['lr']
         num_active_clients = int(np.ceil(cfg['dist_mode']['active_ratio'] * len(client)))
         active_client_id = torch.randperm(len(client))[:num_active_clients]
         active_client = [client[i] for i in range(len(client)) if i in active_client_id]
+        lr = self.optimizer['local'].param_groups[0]['lr']
         result = []
         for i in range(len(active_client)):
             result_i = active_client[i].train.remote(self.model.state_dict(), lr)
@@ -117,15 +125,16 @@ class Server:
         logger_state_dict = [result[i]['logger_state_dict'] for i in range(len(result))]
         for i in range(len(logger_state_dict)):
             self.logger.update_state_dict(logger_state_dict[i])
-        _time = (time.time() - start_time)
+        step_time = (time.time() - start_time)
         exp_finished_time = datetime.timedelta(
-            seconds=round((cfg['global']['num_epochs'] - cfg['epoch']) * _time * num_active_clients))
+            seconds=round((cfg['num_steps'] - (cfg['iteration'] + 1)) * step_time))
         info = {'info': ['Model: {}'.format(cfg['tag']),
-                         'Train Epoch (C): {}'.format(cfg['epoch']),
+                         'Train Epoch (C): {}'.format(cfg['iteration'] + 1),
                          'Learning rate: {:.6f}'.format(lr),
                          'Experiment Finished Time: {}'.format(exp_finished_time)]}
         self.logger.append(info, 'train')
         print(self.logger.write('train'))
+        cfg['iteration'] += 1
         return active_client_id, model_state_dict
 
     def make_batchnorm_server(self, momentum, track_running_stats):
@@ -148,7 +157,7 @@ class Server:
             evaluation = self.logger.evaluate('test', 'full')
             self.logger.append(evaluation, 'test', input_size)
             info = {'info': ['Model: {}'.format(cfg['tag']),
-                             'Test Epoch: {}({:.0f}%)'.format(cfg['epoch'], 100.)]}
+                             'Test Epoch: {}'.format(cfg['iteration'] + 1)]}
             self.logger.append(info, 'test')
             print(self.logger.write('test'))
         return
@@ -219,23 +228,28 @@ class Client:
                                             self.cfg['optimizer']['num_steps'], 0)
 
     def train(self, model_state_dict, lr):
-        model = make_model(self.cfg).to(self.cfg['device'])
+        model = make_model(self.cfg['model']).to(self.cfg['device'])
         model.load_state_dict(model_state_dict)
-        optimizer = make_optimizer(model.parameters(), self.cfg['local'])
+        optimizer = make_optimizer(model.parameters(), self.cfg['optimizer'])
         optimizer_state_dict = optimizer.state_dict()
         optimizer_state_dict['param_groups'][0]['lr'] = lr
         optimizer.load_state_dict(optimizer_state_dict)
-        logger = make_logger()
+        logger = make_logger(self.cfg['data_name'], self.cfg['logger_path'])
         model.train(True)
-        for epoch in range(1, self.cfg['local']['num_update'] + 1):
+        with logger.profiler:
             for i, input in enumerate(self.data_loader['train']):
+                if i % cfg['step_period'] == 0 and cfg['profile']:
+                    logger.profiler.step()
                 input_size = input['data'].size(0)
-                input = to_device(input, cfg['device'])
+                input = to_device(input, self.cfg['device'])
                 output = model(input)
-                output['loss'].backward()
-                torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
-                optimizer.step()
-                optimizer.zero_grad()
+                loss = 1 / cfg['step_period'] * output['loss']
+                loss.backward()
+                if (i + 1) % cfg['step_period'] == 0:
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
+                    optimizer.step()
+                    # scheduler.step()
+                    optimizer.zero_grad()
                 evaluation = logger.evaluate('train', 'batch', input, output)
                 logger.append(evaluation, 'train', n=input_size)
         model = model.to('cpu')
@@ -244,14 +258,14 @@ class Client:
 
     def make_batchnorm(self, model_state_dict, momentum, track_running_stats):
         with torch.no_grad():
-            model = make_model(self.cfg)
+            model = make_model(self.cfg['model']).to(self.cfg['device'])
             flag = make_batchnorm(model, momentum, track_running_stats)
             if flag and track_running_stats:
                 model = model.to(self.cfg['device'])
                 model.load_state_dict(model_state_dict)
                 model.train(True)
                 for i, input in enumerate(self.data_loader['train']):
-                    input = to_device(input, cfg['device'])
+                    input = to_device(input, self.cfg['device'])
                     model(input)
                 model = model.to('cpu')
                 result = {'model_state_dict': model.state_dict()}
@@ -261,12 +275,12 @@ class Client:
 
     def test(self, model_state_dict):
         with torch.no_grad():
-            model = make_model(self.cfg).to(self.cfg['device'])
+            model = make_model(self.cfg['model']).to(self.cfg['device'])
             model.load_state_dict(model_state_dict)
-            logger = make_logger()
+            logger = make_logger(self.cfg['data_name'], self.cfg['logger_path'])
             model.train(False)
             for i, input in enumerate(self.data_loader['test']):
-                input = to_device(input, cfg['device'])
+                input = to_device(input, self.cfg['device'])
                 input_size = input['data'].size(0)
                 output = model(input)
                 evaluation = logger.evaluate('test', 'batch', input, output)
