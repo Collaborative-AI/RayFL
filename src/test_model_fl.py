@@ -44,8 +44,8 @@ def runExperiment():
     result = resume(cfg['best_path'])
     data_split = result['data_split']
     model.load_state_dict(result['model'])
-    cfg['iteration'] = result['cfg']['iteration']
-    test_logger = make_logger(cfg['data_name'], cfg['logger_path'])
+    cfg['step'] = result['cfg']['step']
+    test_logger = make_logger(cfg['logger_path'], data_name=cfg['data_name'])
     controller = make_controller(data_split, model, None, None, test_logger)
     controller.make_worker(dataset)
     controller.test()

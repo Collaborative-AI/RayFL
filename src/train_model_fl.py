@@ -52,7 +52,7 @@ def runExperiment():
                             cfg['data_mode']['stat_mode'])
     result = resume(os.path.join(cfg['checkpoint_path'], 'model'), resume_mode=cfg['resume_mode'])
     if result is None:
-        cfg['iteration'] = 0
+        cfg['step'] = 0
         model = model.to(cfg['device'])
         optimizer = {
             'local': make_optimizer([torch.nn.Parameter(torch.tensor([0.]))],
@@ -60,9 +60,9 @@ def runExperiment():
             'global': make_optimizer(model.parameters(), cfg[cfg['tag']]['global']['optimizer'])}
         scheduler = {'local': make_scheduler(optimizer['local'], cfg[cfg['tag']]['local']['optimizer']),
                      'global': make_scheduler(optimizer['global'],  cfg[cfg['tag']]['global']['optimizer'])}
-        logger = make_logger(cfg['data_name'], cfg['logger_path'])
+        logger = make_logger(cfg['logger_path'], data_name=cfg['data_name'])
     else:
-        cfg['iteration'] = result['cfg']['iteration']
+        cfg['step'] = result['cfg']['step']
         model = model.to(cfg['device'])
         optimizer = {
             'local': make_optimizer([torch.nn.Parameter(torch.tensor([0.]))],
@@ -70,20 +70,21 @@ def runExperiment():
             'global': make_optimizer(model.parameters(), cfg[cfg['tag']]['global']['optimizer'])}
         scheduler = {'local': make_scheduler(optimizer['local'], cfg[cfg['tag']]['local']['optimizer']),
                      'global': make_scheduler(optimizer['global'],  cfg[cfg['tag']]['global']['optimizer'])}
-        logger = make_logger(cfg['data_name'], cfg['logger_path'])
+        logger = make_logger(cfg['logger_path'], data_name=cfg['data_name'])
         model.load_state_dict(result['model'])
         optimizer['local'].load_state_dict(result['optimize']['local'])
         optimizer['global'].load_state_dict(result['optimize']['global'])
         scheduler['local'].load_state_dict(result['scheduler']['local'])
         scheduler['global'].load_state_dict(result['scheduler']['global'])
         logger.load_state_dict(result['logger'])
+        logger.reset()
     controller = make_controller(data_split, model, optimizer, scheduler, logger)
     controller.make_worker(dataset)
-    while cfg['iteration'] < cfg['num_steps']:
+    while cfg['step'] < cfg['num_steps']:
         controller.train()
         controller.test()
         controller.update()
-        result = {'cfg': cfg, 'iteration': cfg['iteration'], 'data_split': data_split,
+        result = {'cfg': cfg, 'step': cfg['step'], 'data_split': data_split,
                   'model': controller.model_state_dict(),
                   'optimizer': controller.optimizer_state_dict(),
                   'scheduler': controller.scheduler_state_dict(),

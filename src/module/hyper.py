@@ -41,6 +41,8 @@ def process_control():
     cfg[tag]['optimizer']['scheduler_name'] = 'CosineAnnealingLR'
 
     if 'data_mode' in cfg['control']:
+        cfg['num_steps'] = 4
+
         cfg['data_mode'] = cfg['control']['data_mode']
         cfg['data_mode']['num_splits'] = int(cfg['data_mode']['num_splits'])
         cfg['dist_mode'] = cfg['control']['dist_mode']
@@ -61,7 +63,8 @@ def process_control():
         cfg[tag]['local']['optimizer']['batch_size'] = {'train': cfg['dist_mode']['batch_size'],
                                                         'test': cfg['dist_mode']['batch_size']}
         cfg[tag]['local']['optimizer']['step_period'] = cfg['step_period']
-        cfg[tag]['local']['optimizer']['num_steps'] = cfg['dist_mode']['num_steps']
+        cfg[tag]['local']['optimizer']['num_steps'] = cfg['num_steps']
+        cfg[tag]['local']['optimizer']['num_f_steps'] = cfg['dist_mode']['num_steps']
         cfg[tag]['local']['optimizer']['scheduler_name'] = 'CosineAnnealingLR'
 
         cfg[tag]['global'] = {}

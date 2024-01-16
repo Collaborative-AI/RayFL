@@ -127,14 +127,14 @@ class Server:
             self.logger.update_state_dict(logger_state_dict[i])
         step_time = (time.time() - start_time)
         exp_finished_time = datetime.timedelta(
-            seconds=round((cfg['num_steps'] - (cfg['iteration'] + 1)) * step_time))
+            seconds=round((cfg['num_steps'] - (cfg['step'] + 1)) * step_time))
         info = {'info': ['Model: {}'.format(cfg['tag']),
-                         'Train Epoch (C): {}'.format(cfg['iteration'] + 1),
+                         'Train Epoch (C): {}'.format(cfg['step'] + 1),
                          'Learning rate: {:.6f}'.format(lr),
                          'Experiment Finished Time: {}'.format(exp_finished_time)]}
         self.logger.append(info, 'train')
         print(self.logger.write('train'))
-        cfg['iteration'] += 1
+        cfg['step'] += 1
         return active_client_id, model_state_dict
 
     def make_batchnorm_server(self, momentum, track_running_stats):
@@ -157,7 +157,7 @@ class Server:
             evaluation = self.logger.evaluate('test', 'full')
             self.logger.append(evaluation, 'test', input_size)
             info = {'info': ['Model: {}'.format(cfg['tag']),
-                             'Test Epoch: {}'.format(cfg['iteration'] + 1)]}
+                             'Test Epoch (S): {}'.format(cfg['step'])]}
             self.logger.append(info, 'test')
             print(self.logger.write('test'))
         return
@@ -212,7 +212,8 @@ class Server:
         logger_state_dict = [result[i]['logger_state_dict'] for i in range(len(result))]
         for i in range(len(logger_state_dict)):
             self.logger.update_state_dict(logger_state_dict[i])
-        info = {'info': ['Model: {}'.format(cfg['tag']), 'Test Epoch: {}({:.0f}%)'.format(cfg['epoch'], 100.)]}
+        info = {'info': ['Model: {}'.format(cfg['tag']),
+                         'Test Epoch (C): {}'.format(cfg['step'])]}
         self.logger.append(info, 'test')
         print(self.logger.write('test'))
         return
@@ -225,7 +226,7 @@ class Client:
         self.dataset = dataset
         self.cfg = cfg
         self.data_loader = make_data_loader(self.dataset, self.cfg['optimizer']['batch_size'],
-                                            self.cfg['optimizer']['num_steps'], 0)
+                                            self.cfg['optimizer']['num_f_steps'], 0)
 
     def train(self, model_state_dict, lr):
         model = make_model(self.cfg['model']).to(self.cfg['device'])
@@ -234,7 +235,7 @@ class Client:
         optimizer_state_dict = optimizer.state_dict()
         optimizer_state_dict['param_groups'][0]['lr'] = lr
         optimizer.load_state_dict(optimizer_state_dict)
-        logger = make_logger(self.cfg['data_name'], self.cfg['logger_path'])
+        logger = make_logger(self.cfg['logger_path'], data_name=self.cfg['data_name'])
         model.train(True)
         with logger.profiler:
             for i, input in enumerate(self.data_loader['train']):
@@ -277,7 +278,7 @@ class Client:
         with torch.no_grad():
             model = make_model(self.cfg['model']).to(self.cfg['device'])
             model.load_state_dict(model_state_dict)
-            logger = make_logger(self.cfg['data_name'], self.cfg['logger_path'])
+            logger = make_logger(self.cfg['logger_path'], data_name=self.cfg['data_name'])
             model.train(False)
             for i, input in enumerate(self.data_loader['test']):
                 input = to_device(input, self.cfg['device'])
