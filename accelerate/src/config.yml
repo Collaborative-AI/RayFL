@@ -1,0 +1,20 @@
+---
+# control
+control:
+  data_name: MNIST
+  model_name: mlp
+  task_name: ic
+  batch_size: 250
+  step_period: 1
+  num_steps: 400
+  eval_period: 200
+  run_mode: base
+# experiment
+pin_memory: True
+num_workers: 0
+init_seed: 0
+num_experiments: 1
+log_interval: 0.25
+device: cuda
+resume_mode: 0
+profile: False
