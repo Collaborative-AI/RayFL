@@ -1,6 +1,6 @@
 # Use huggingface/accelerate-gpu as the base image
-# FROM huggingface/accelerate-cpu
-FROM huggingface/accelerate-gpu
+FROM huggingface/accelerate-cpu
+# FROM huggingface/accelerate-gpu
 
 # Install the required Python packages
 USER root
