@@ -121,7 +121,11 @@ tmp/
 res/
 
 .idea/
+<<<<<<< HEAD
 .vscode/
 .DS_Store
 scripts/
+=======
+.DS_Store
+>>>>>>> flpipe/main
 
