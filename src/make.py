@@ -53,7 +53,7 @@ def main():
         data_name = ['MNIST', 'CIFAR10']
         model_name = ['linear', 'mlp', 'cnn', 'resnet18']
         data_mode = ['100-horiz-iid', '100-horiz-noniid~c~2', '100-horiz-noniid~d~0.1', '100-horiz-noniid~d~0.3']
-        comm_mode = ['sync-0.1-5']
+        comm_mode = ['sync-1.0-250-120-server']
         control_name = [[data_name, model_name, data_mode, comm_mode]]
         controls = make_controls(script_name, init_seeds, num_experiments, resume_mode, control_name)
     else:
