@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Ray
 ## idea tests on aws
 So far we tested it on aws, following the tutorial on https://saturncloud.io/blog/getting-started-with-ray-clusters/, ray cluster on aws part in Scaling Python with Ray by Holden Karau & Boris Lublinsky https://github.com/scalingpythonml/scaling-python-with-ray/blob/main/appB.asciidoc, and ray cluster documentation https://docs.ray.io/en/latest/cluster/vms/getting-started.html#vm-cluster-quick-start. 
