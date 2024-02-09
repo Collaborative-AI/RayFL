@@ -1,5 +1,6 @@
 import argparse
 import itertools
+import os
 
 parser = argparse.ArgumentParser(description='config')
 parser.add_argument('--run', default='train', type=str)
@@ -52,8 +53,8 @@ def main():
         script_name = [['{}_model_fl.py'.format(run)]]
         data_name = ['MNIST', 'CIFAR10']
         model_name = ['linear', 'mlp', 'cnn', 'resnet18']
-        data_mode = ['100-horiz-iid', '100-horiz-noniid~c~2', '100-horiz-noniid~d~0.1', '100-horiz-noniid~d~0.3']
-        comm_mode = ['sync-1.0-250-120-server']
+        data_mode = ['2-horiz-iid', '2-horiz-noniid~c~2', '2-horiz-noniid~d~0.1', '2-horiz-noniid~d~0.3']
+        comm_mode = ['sync-1.0-250-100-server']
         control_name = [[data_name, model_name, data_mode, comm_mode]]
         controls = make_controls(script_name, init_seeds, num_experiments, resume_mode, control_name)
     else:
@@ -69,7 +70,9 @@ def main():
             s = s[:-2] + '\nwait\n'
             if j % split_round == 0:
                 print(s)
-                run_file = open('{}_{}.sh'.format(filename, k), 'w')
+                if not os.path.exists('scripts'):
+                    os.makedirs('scripts')
+                run_file = open(os.path.join('scripts', '{}_{}.sh'.format(filename, k)), 'w')
                 run_file.write(s)
                 run_file.close()
                 s = '#!/bin/bash\n'
@@ -79,7 +82,9 @@ def main():
         if s[-5:-1] != 'wait':
             s = s + 'wait\n'
         print(s)
-        run_file = open('{}_{}.sh'.format(filename, k), 'w')
+        if not os.path.exists('scripts'):
+            os.makedirs('scripts')
+        run_file = open(os.path.join('scripts', '{}_{}.sh'.format(filename, k)), 'w')
         run_file.write(s)
         run_file.close()
     return
