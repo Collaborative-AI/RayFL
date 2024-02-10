@@ -47,15 +47,23 @@ def main():
         script_name = [['{}_model.py'.format(run)]]
         data_name = ['MNIST', 'CIFAR10']
         model_name = ['linear', 'mlp', 'cnn', 'resnet18']
-        control_name = [[data_name, model_name]]
+        batch_size = ['250']
+        step_period = ['1']
+        num_steps = ['80000']
+        eval_period = ['200']
+        control_name = [[data_name, model_name, batch_size, step_period, num_steps, eval_period]]
         controls = make_controls(script_name, init_seeds, num_experiments, resume_mode, control_name)
     elif mode == 'fl':
         script_name = [['{}_model_fl.py'.format(run)]]
         data_name = ['MNIST', 'CIFAR10']
         model_name = ['linear', 'mlp', 'cnn', 'resnet18']
+        batch_size = ['250']
+        step_period = ['1']
+        num_steps = ['400']
+        eval_period = ['1']
         data_mode = ['2-horiz-iid', '2-horiz-noniid~c~2', '2-horiz-noniid~d~0.1', '2-horiz-noniid~d~0.3']
-        comm_mode = ['sync-1.0-250-100-server']
-        control_name = [[data_name, model_name, data_mode, comm_mode]]
+        comm_mode = ['sync-1.0-100-server']
+        control_name = [[data_name, model_name, batch_size, step_period, num_steps, eval_period, data_mode, comm_mode]]
         controls = make_controls(script_name, init_seeds, num_experiments, resume_mode, control_name)
     else:
         raise ValueError('Not valid mode')

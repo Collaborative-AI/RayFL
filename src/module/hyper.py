@@ -4,12 +4,12 @@ from config import cfg
 def process_control():
     cfg['data_name'] = cfg['control']['data_name']
     cfg['model_name'] = cfg['control']['model_name']
-
-    cfg['batch_size'] = 250
-    cfg['step_period'] = 1
-    cfg['num_steps'] = 80000
-    cfg['eval_period'] = 200
+    cfg['batch_size'] = int(cfg['control']['batch_size'])
+    cfg['step_period'] = int(cfg['control']['step_period'])
+    cfg['num_steps'] = int(cfg['control']['num_steps'])
+    cfg['eval_period'] = int(cfg['control']['eval_period'])
     # cfg['num_epochs'] = 400
+
     cfg['collate_mode'] = 'dict'
 
     cfg['model'] = {}
@@ -41,13 +41,10 @@ def process_control():
     cfg[tag]['optimizer']['scheduler_name'] = 'CosineAnnealingLR'
 
     if 'data_mode' in cfg['control']:
-        cfg['num_steps'] = 4
-
         cfg['data_mode'] = cfg['control']['data_mode']
         cfg['data_mode']['num_splits'] = int(cfg['data_mode']['num_splits'])
         cfg['dist_mode'] = cfg['control']['dist_mode']
         cfg['dist_mode']['active_ratio'] = float(cfg['dist_mode']['active_ratio'])
-        cfg['dist_mode']['batch_size'] = int(cfg['dist_mode']['batch_size'])
         cfg['dist_mode']['num_steps'] = int(cfg['dist_mode']['num_steps'])
 
         cfg[tag]['local'] = {}
@@ -60,11 +57,11 @@ def process_control():
         cfg[tag]['local']['optimizer']['momentum'] = 0.9
         cfg[tag]['local']['optimizer']['weight_decay'] = 5e-4
         cfg[tag]['local']['optimizer']['nesterov'] = True
-        cfg[tag]['local']['optimizer']['batch_size'] = {'train': cfg['dist_mode']['batch_size'],
-                                                        'test': cfg['dist_mode']['batch_size']}
+        cfg[tag]['local']['optimizer']['batch_size'] = {'train': cfg['batch_size'],
+                                                        'test': cfg['batch_size']}
         cfg[tag]['local']['optimizer']['step_period'] = cfg['step_period']
         cfg[tag]['local']['optimizer']['num_steps'] = cfg['num_steps']
-        cfg[tag]['local']['optimizer']['num_f_steps'] = cfg['dist_mode']['num_steps']
+        cfg[tag]['local']['optimizer']['num_local_steps'] = cfg['dist_mode']['num_steps']
         cfg[tag]['local']['optimizer']['scheduler_name'] = 'CosineAnnealingLR'
 
         cfg[tag]['global'] = {}

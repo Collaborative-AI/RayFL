@@ -226,7 +226,7 @@ class Client:
         self.dataset = dataset
         self.cfg = cfg
         self.data_loader = make_data_loader(self.dataset, self.cfg['optimizer']['batch_size'],
-                                            self.cfg['optimizer']['num_f_steps'], 0)
+                                            self.cfg['optimizer']['num_local_steps'])
 
     def train(self, model_state_dict, lr):
         model = make_model(self.cfg['model']).to(self.cfg['device'])

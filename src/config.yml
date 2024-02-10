@@ -3,6 +3,10 @@
 control:
   data_name: MNIST
   model_name: linear
+  batch_size: 250
+  step_period: 1
+  num_steps: 400
+  eval_period: 200
   data_mode:
     num_splits: 2
     split_mode: horiz
@@ -10,7 +14,6 @@ control:
   dist_mode:
     agg_mode: sync
     active_ratio: 1.0
-    batch_size: 250
     num_steps: 100
     eval_mode: server
 # experiment
