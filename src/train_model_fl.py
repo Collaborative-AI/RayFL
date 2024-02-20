@@ -59,7 +59,7 @@ def runExperiment():
                                     cfg[cfg['tag']]['local']['optimizer']),
             'global': make_optimizer(model.parameters(), cfg[cfg['tag']]['global']['optimizer'])}
         scheduler = {'local': make_scheduler(optimizer['local'], cfg[cfg['tag']]['local']['optimizer']),
-                     'global': make_scheduler(optimizer['global'],  cfg[cfg['tag']]['global']['optimizer'])}
+                     'global': make_scheduler(optimizer['global'], cfg[cfg['tag']]['global']['optimizer'])}
         logger = make_logger(cfg['logger_path'], data_name=cfg['data_name'])
     else:
         cfg['step'] = result['cfg']['step']
@@ -69,7 +69,7 @@ def runExperiment():
                                     cfg[cfg['tag']]['local']['optimizer']),
             'global': make_optimizer(model.parameters(), cfg[cfg['tag']]['global']['optimizer'])}
         scheduler = {'local': make_scheduler(optimizer['local'], cfg[cfg['tag']]['local']['optimizer']),
-                     'global': make_scheduler(optimizer['global'],  cfg[cfg['tag']]['global']['optimizer'])}
+                     'global': make_scheduler(optimizer['global'], cfg[cfg['tag']]['global']['optimizer'])}
         logger = make_logger(cfg['logger_path'], data_name=cfg['data_name'])
         model.load_state_dict(result['model'])
         optimizer['local'].load_state_dict(result['optimize']['local'])

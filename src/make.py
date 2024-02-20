@@ -37,8 +37,11 @@ def main():
     resume_mode = args['resume_mode']
     mode = args['mode']
     split_round = args['split_round']
-    gpu_ids = [','.join(str(i) for i in list(range(x, x + 1))) for x in
-               list(range(init_gpu, init_gpu + num_gpus))]
+    if num_gpus > 0:
+        gpu_ids = [','.join(str(i) for i in list(range(x, x + 1))) for x in
+                   list(range(init_gpu, init_gpu + num_gpus))]
+    else:
+        gpu_ids = None
     init_seeds = [list(range(init_seed, init_seed + num_experiments, experiment_step))]
     num_experiments = [[experiment_step]]
     resume_mode = [[resume_mode]]
@@ -49,9 +52,15 @@ def main():
         model_name = ['linear', 'mlp', 'cnn', 'resnet18']
         batch_size = ['250']
         step_period = ['1']
-        num_steps = ['80000']
+        num_steps = ['400']
         eval_period = ['200']
-        control_name = [[data_name, model_name, batch_size, step_period, num_steps, eval_period]]
+        optimizer_name = ['SGD']
+        lr = ['0.1']
+        momentum = ['0.9']
+        scheduler_name = ['CosineAnnealingLR']
+        control_name = [
+            [data_name, model_name, batch_size, step_period, num_steps, eval_period, optimizer_name, lr, momentum,
+             scheduler_name]]
         controls = make_controls(script_name, init_seeds, num_experiments, resume_mode, control_name)
     elif mode == 'fl':
         script_name = [['{}_model_fl.py'.format(run)]]
@@ -59,11 +68,22 @@ def main():
         model_name = ['linear', 'mlp', 'cnn', 'resnet18']
         batch_size = ['250']
         step_period = ['1']
-        num_steps = ['400']
+        num_steps = ['2']
         eval_period = ['1']
+        optimizer_name = ['SGD']
+        lr = ['1']
+        momentum = ['0']
+        scheduler_name = ['CosineAnnealingLR']
         data_mode = ['2-horiz-iid', '2-horiz-noniid~c~2', '2-horiz-noniid~d~0.1', '2-horiz-noniid~d~0.3']
-        comm_mode = ['sync-1.0-100-server']
-        control_name = [[data_name, model_name, batch_size, step_period, num_steps, eval_period, data_mode, comm_mode]]
+        dist_mode = ['sync-1.0-100-server']
+        dist_optimizer_name = ['SGD']
+        dist_lr = ['0.03']
+        dist_momentum = ['0.9']
+        dist_scheduler_name = ['None']
+        dist_controls = [dist_mode, dist_optimizer_name, dist_lr, dist_momentum, dist_scheduler_name]
+        dist_controls = list('-'.join(x) for x in itertools.product(*dist_controls))
+        control_name = [[data_name, model_name, batch_size, step_period, num_steps, eval_period, optimizer_name, lr,
+                         momentum, scheduler_name, data_mode, dist_controls]]
         controls = make_controls(script_name, init_seeds, num_experiments, resume_mode, control_name)
     else:
         raise ValueError('Not valid mode')
@@ -72,8 +92,12 @@ def main():
     k = 1
     for i in range(len(controls)):
         controls[i] = list(controls[i])
-        s = s + 'CUDA_VISIBLE_DEVICES=\"{}\" python {} --init_seed {} --num_experiments {} ' \
-                '--resume_mode {} --control_name {}&\n'.format(gpu_ids[i % len(gpu_ids)], *controls[i])
+        if num_gpus > 0:
+            s = s + 'CUDA_VISIBLE_DEVICES=\"{}\" python {} --init_seed {} --num_experiments {} ' \
+                    '--resume_mode {} --control_name {}&\n'.format(gpu_ids[i % len(gpu_ids)], *controls[i])
+        else:
+            s = s + 'python {} --init_seed {} --num_experiments {} ' \
+                    '--resume_mode {} --control_name {} --device cpu&\n'.format(*controls[i])
         if i % round == round - 1:
             s = s[:-2] + '\nwait\n'
             if j % split_round == 0:
