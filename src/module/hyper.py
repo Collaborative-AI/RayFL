@@ -10,7 +10,8 @@ def process_control():
     cfg['eval_period'] = int(cfg['control']['eval_period'])
     cfg['optimizer_name'] = cfg['control']['optimizer_name']
     cfg['lr'] = float(cfg['control']['lr'])
-    cfg['momentum'] = [float(x) for x in cfg['control']['momentum'].split('-')]
+    cfg['momentum'] = [float(x) for x in str(cfg['control']['momentum']).split('-')]
+    cfg['momentum'] = cfg['momentum'][0] if len(cfg['momentum']) == 1 else cfg['momentum']
     cfg['scheduler_name'] = cfg['control']['scheduler_name']
     # cfg['num_epochs'] = 400
 
@@ -36,9 +37,9 @@ def process_control():
     cfg[tag]['optimizer'] = {}
     cfg[tag]['optimizer']['optimizer_name'] = cfg['optimizer_name']
     cfg[tag]['optimizer']['lr'] = cfg['lr']
-    cfg[tag]['optimizer']['momentum'] = cfg['momentum'][0] if cfg['optimizer_name'] in ['SGD'] else cfg['momentum']
+    cfg[tag]['optimizer']['momentum'] = cfg['momentum']
     cfg[tag]['optimizer']['weight_decay'] = 5e-4
-    cfg[tag]['optimizer']['nesterov'] = True if cfg[tag]['optimizer']['momentum'] > 0 else False
+    cfg[tag]['optimizer']['nesterov'] = True if cfg[tag]['optimizer']['momentum'] != 0 else False
     cfg[tag]['optimizer']['batch_size'] = {'train': cfg['batch_size'], 'test': cfg['batch_size']}
     cfg[tag]['optimizer']['step_period'] = cfg['step_period']
     cfg[tag]['optimizer']['num_steps'] = cfg['num_steps']
@@ -53,9 +54,10 @@ def process_control():
         cfg['dist_mode']['num_steps'] = int(cfg['dist_mode']['num_steps'])
         cfg['dist_mode']['optimizer_name'] = cfg['dist_mode']['optimizer_name']
         cfg['dist_mode']['lr'] = float(cfg['dist_mode']['lr'])
-        cfg['dist_mode']['momentum'] = [float(x) for x in cfg['dist_mode']['momentum'].split('-')]
+        cfg['dist_mode']['momentum'] = [float(x) for x in str(cfg['control']['dist_mode']['momentum']).split('-')]
+        cfg['dist_mode']['momentum'] = cfg['dist_mode']['momentum'][0] \
+            if len(cfg['dist_mode']['momentum']) == 1 else cfg['dist_mode']['momentum']
         cfg['dist_mode']['scheduler_name'] = cfg['dist_mode']['scheduler_name']
-
 
         cfg[tag]['local'] = {}
         cfg[tag]['local']['device'] = cfg['device']
@@ -64,10 +66,9 @@ def process_control():
         cfg[tag]['local']['optimizer'] = {}
         cfg[tag]['local']['optimizer']['optimizer_name'] = cfg['dist_mode']['optimizer_name']
         cfg[tag]['local']['optimizer']['lr'] = cfg['dist_mode']['lr']
-        cfg[tag]['local']['optimizer']['momentum'] = cfg['dist_mode']['momentum'][0] \
-            if cfg['dist_mode']['optimizer_name'] in ['SGD'] else cfg['dist_mode']['momentum']
+        cfg[tag]['local']['optimizer']['momentum'] = cfg['dist_mode']['momentum']
         cfg[tag]['local']['optimizer']['weight_decay'] = 5e-4
-        cfg[tag]['local']['optimizer']['nesterov'] = True if cfg[tag]['local']['optimizer']['momentum'] > 0 else False
+        cfg[tag]['local']['optimizer']['nesterov'] = True if cfg[tag]['local']['optimizer']['momentum'] != 0 else False
         cfg[tag]['local']['optimizer']['batch_size'] = {'train': cfg['batch_size'],
                                                         'test': cfg['batch_size']}
         cfg[tag]['local']['optimizer']['step_period'] = cfg['step_period']
@@ -79,10 +80,10 @@ def process_control():
         cfg[tag]['global']['optimizer'] = {}
         cfg[tag]['global']['optimizer']['optimizer_name'] = cfg['optimizer_name']
         cfg[tag]['global']['optimizer']['lr'] = cfg['lr']
-        cfg[tag]['global']['optimizer']['momentum'] = cfg['momentum'][0] \
-            if cfg['optimizer_name'] in ['SGD'] else cfg['momentum']
+        cfg[tag]['global']['optimizer']['momentum'] = cfg['momentum']
         cfg[tag]['global']['optimizer']['weight_decay'] = 0
-        cfg[tag]['global']['optimizer']['nesterov'] = True if cfg[tag]['global']['optimizer']['momentum'] > 0 else False
+        cfg[tag]['global']['optimizer']['nesterov'] = True if cfg[tag]['global']['optimizer'][
+                                                                  'momentum'] != 0 else False
         cfg[tag]['global']['optimizer']['batch_size'] = {'train': cfg['batch_size'], 'test': cfg['batch_size']}
         cfg[tag]['global']['optimizer']['step_period'] = cfg['step_period']
         cfg[tag]['global']['optimizer']['num_steps'] = cfg['num_steps']
