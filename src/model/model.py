@@ -60,10 +60,10 @@ def make_optimizer(parameters, cfg):
         optimizer = optim.SGD(parameters, lr=cfg['lr'], momentum=cfg['momentum'],
                               weight_decay=cfg['weight_decay'], nesterov=cfg['nesterov'])
     elif cfg['optimizer_name'] == 'Adam':
-        optimizer = optim.Adam(parameters, lr=cfg['lr'], betas=cfg['betas'],
+        optimizer = optim.Adam(parameters, lr=cfg['lr'], betas=cfg['momentum'],
                                weight_decay=cfg['weight_decay'])
     elif cfg['optimizer_name'] == 'AdamW':
-        optimizer = optim.AdamW(parameters, lr=cfg['lr'], betas=cfg['betas'],
+        optimizer = optim.AdamW(parameters, lr=cfg['lr'], betas=cfg['momentum'],
                                 weight_decay=cfg['weight_decay'])
     elif cfg['optimizer_name'] == 'LBFGS':
         optimizer = optim.LBFGS(parameters, lr=cfg['lr'])
