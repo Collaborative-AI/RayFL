@@ -58,9 +58,9 @@ def main():
         lr = ['0.1']
         momentum = ['0.9']
         scheduler_name = ['CosineAnnealingLR']
-        control_name = [
-            [data_name, model_name, batch_size, step_period, num_steps, eval_period, optimizer_name, lr, momentum,
-             scheduler_name]]
+        optimizer_controls = [optimizer_name, lr, momentum, scheduler_name]
+        optimizer_controls = list('-'.join(x) for x in itertools.product(*optimizer_controls))
+        control_name = [[data_name, model_name, batch_size, step_period, num_steps, eval_period, optimizer_controls]]
         controls = make_controls(script_name, init_seeds, num_experiments, resume_mode, control_name)
     elif mode == 'fl':
         script_name = [['{}_model_fl.py'.format(run)]]
@@ -74,16 +74,20 @@ def main():
         lr = ['1']
         momentum = ['0']
         scheduler_name = ['CosineAnnealingLR']
+        optimizer_controls = [optimizer_name, lr, momentum, scheduler_name]
+        optimizer_controls = list('-'.join(x) for x in itertools.product(*optimizer_controls))
         data_mode = ['2-horiz-iid', '2-horiz-noniid~c~2', '2-horiz-noniid~d~0.1', '2-horiz-noniid~d~0.3']
         dist_mode = ['sync-1.0-100-server']
         dist_optimizer_name = ['SGD']
         dist_lr = ['0.03']
         dist_momentum = ['0.9']
         dist_scheduler_name = ['None']
-        dist_controls = [dist_mode, dist_optimizer_name, dist_lr, dist_momentum, dist_scheduler_name]
-        dist_controls = list('-'.join(x) for x in itertools.product(*dist_controls))
-        control_name = [[data_name, model_name, batch_size, step_period, num_steps, eval_period, optimizer_name, lr,
-                         momentum, scheduler_name, data_mode, dist_controls]]
+        dist_optimizer_controls = [dist_optimizer_name, dist_lr, dist_momentum, dist_scheduler_name]
+        dist_optimizer_controls = list('~'.join(x) for x in itertools.product(*dist_optimizer_controls))
+        dist_mode = [dist_mode, dist_optimizer_controls]
+        dist_mode = list('-'.join(x) for x in itertools.product(*dist_mode))
+        control_name = [[data_name, model_name, batch_size, step_period, num_steps, eval_period, optimizer_controls,
+                         data_mode, dist_mode]]
         controls = make_controls(script_name, init_seeds, num_experiments, resume_mode, control_name)
     else:
         raise ValueError('Not valid mode')

@@ -7,10 +7,11 @@ control:
   step_period: 1
   num_steps: 400
   eval_period: 200
-  optimizer_name: SGD
-  lr: 0.1
-  momentum: 0.9
-  scheduler_name: CosineAnnealingLR
+  optimizer:
+    optimizer_name: SGD
+    lr: 0.1
+    momentum: 0.9
+    scheduler_name: CosineAnnealingLR
   data_mode:
     num_splits: 2
     split_mode: horiz
@@ -20,10 +21,11 @@ control:
     active_ratio: 1.0
     num_steps: 100
     eval_mode: server
-    optimizer_name: SGD
-    lr: 0.03
-    momentum: 0.9
-    scheduler_name: None
+    optimizer:
+      optimizer_name: SGD
+      lr: 0.03
+      momentum: 0.9
+      scheduler_name: None
 # experiment
 pin_memory: True
 num_workers: 0
