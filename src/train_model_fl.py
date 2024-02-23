@@ -54,20 +54,16 @@ def runExperiment():
     if result is None:
         cfg['step'] = 0
         model = model.to(cfg['device'])
-        optimizer = {
-            'local': make_optimizer([torch.nn.Parameter(torch.tensor([0.]))],
-                                    cfg[cfg['tag']]['local']['optimizer']),
-            'global': make_optimizer(model.parameters(), cfg[cfg['tag']]['global']['optimizer'])}
+        optimizer = {'local': make_optimizer(model.parameters(), cfg[cfg['tag']]['local']['optimizer']),
+                     'global': make_optimizer(model.parameters(), cfg[cfg['tag']]['global']['optimizer'])}
         scheduler = {'local': make_scheduler(optimizer['local'], cfg[cfg['tag']]['local']['optimizer']),
                      'global': make_scheduler(optimizer['global'], cfg[cfg['tag']]['global']['optimizer'])}
         logger = make_logger(cfg['logger_path'], data_name=cfg['data_name'])
     else:
         cfg['step'] = result['cfg']['step']
         model = model.to(cfg['device'])
-        optimizer = {
-            'local': make_optimizer([torch.nn.Parameter(torch.tensor([0.]))],
-                                    cfg[cfg['tag']]['local']['optimizer']),
-            'global': make_optimizer(model.parameters(), cfg[cfg['tag']]['global']['optimizer'])}
+        optimizer = {'local': make_optimizer(model.parameters(), cfg[cfg['tag']]['local']['optimizer']),
+                     'global': make_optimizer(model.parameters(), cfg[cfg['tag']]['global']['optimizer'])}
         scheduler = {'local': make_scheduler(optimizer['local'], cfg[cfg['tag']]['local']['optimizer']),
                      'global': make_scheduler(optimizer['global'], cfg[cfg['tag']]['global']['optimizer'])}
         logger = make_logger(cfg['logger_path'], data_name=cfg['data_name'])

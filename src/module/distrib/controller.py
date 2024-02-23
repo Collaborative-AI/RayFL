@@ -5,7 +5,7 @@ import time
 import torch
 from config import cfg
 from dataset import make_data_loader, split_dataset
-from model import make_model, make_optimizer, make_batchnorm
+from model import make_model, make_optimizer, make_scheduler, make_batchnorm
 from metric import make_logger
 from module import to_device
 
@@ -41,8 +41,8 @@ class Controller:
         return local_cfg
 
     def train(self):
-        active_client_id, model_state_dict = self.worker['server'].train(self.worker['client'])
-        self.worker['server'].synchronize(active_client_id, model_state_dict)
+        active_client_id, model_state_dict, lr = self.worker['server'].train(self.worker['client'])
+        self.worker['server'].synchronize(active_client_id, model_state_dict, lr)
         return
 
     def update(self):
@@ -90,7 +90,7 @@ class Server:
         self.cfg = cfg
         self.data_loader = make_data_loader(self.dataset, self.cfg['optimizer']['batch_size'], shuffle=False)
 
-    def synchronize(self, active_client_id, model_state_dict):
+    def synchronize(self, active_client_id, model_state_dict, lr):
         with torch.no_grad():
             if len(model_state_dict) > 0:
                 self.optimizer['global'].zero_grad()
@@ -106,8 +106,8 @@ class Server:
                             tmp_v += weight[i] * model_state_dict[i][k]
                         v.grad = (v.data - tmp_v).detach()
                 self.optimizer['global'].step()
-            self.optimizer['local'].step()
-            self.scheduler['local'].step()
+                self.scheduler['global'].step()
+                self.optimizer['local'].param_groups[0]['lr'] = lr
         return
 
     def train(self, client):
@@ -123,6 +123,8 @@ class Server:
         result = ray.get(result)
         model_state_dict = [result[i]['model_state_dict'] for i in range(len(result))]
         logger_state_dict = [result[i]['logger_state_dict'] for i in range(len(result))]
+        lr = result[0]['lr']
+        step = result[0]['step']
         for i in range(len(logger_state_dict)):
             self.logger.update_state_dict(logger_state_dict[i])
         step_time = (time.time() - start_time)
@@ -134,8 +136,8 @@ class Server:
                          'Experiment Finished Time: {}'.format(exp_finished_time)]}
         self.logger.append(info, 'train')
         print(self.logger.write('train'))
-        cfg['step'] += 1
-        return active_client_id, model_state_dict
+        cfg['step'] += step
+        return active_client_id, model_state_dict, lr
 
     def make_batchnorm_server(self, momentum, track_running_stats):
         with torch.no_grad():
@@ -228,13 +230,15 @@ class Client:
         self.data_loader = make_data_loader(self.dataset, self.cfg['optimizer']['batch_size'],
                                             self.cfg['optimizer']['num_local_steps'])
 
-    def train(self, model_state_dict, lr):
+    def train(self, model_state_dict, lr, step):
+        self.cfg['optimizer']['num_step'] = step
         model = make_model(self.cfg['model']).to(self.cfg['device'])
         model.load_state_dict(model_state_dict)
         optimizer = make_optimizer(model.parameters(), self.cfg['optimizer'])
         optimizer_state_dict = optimizer.state_dict()
         optimizer_state_dict['param_groups'][0]['lr'] = lr
         optimizer.load_state_dict(optimizer_state_dict)
+        scheduler = make_scheduler(optimizer['local'], self.cfg['optimizer'])
         logger = make_logger(self.cfg['logger_path'], data_name=self.cfg['data_name'])
         model.train(True)
         with logger.profiler:
@@ -249,12 +253,15 @@ class Client:
                 if (i + 1) % cfg['step_period'] == 0:
                     torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
                     optimizer.step()
-                    # scheduler.step()
+                    scheduler.step()
                     optimizer.zero_grad()
+                    step += 1
                 evaluation = logger.evaluate('train', 'batch', input, output)
                 logger.append(evaluation, 'train', n=input_size)
         model = model.to('cpu')
-        result = {'model_state_dict': model.state_dict(), 'logger_state_dict': logger.state_dict()}
+        lr = optimizer_state_dict['param_groups'][0]['lr']
+        result = {'model_state_dict': model.state_dict(), 'logger_state_dict': logger.state_dict(), 'lr': lr,
+                  'step': step}
         return result
 
     def make_batchnorm(self, model_state_dict, momentum, track_running_stats):
