@@ -19,7 +19,7 @@ control:
   dist_mode:
     agg_mode: sync
     active_ratio: 1.0
-    num_steps: 100
+    num_steps: 200
     eval_mode: server
     optimizer:
       optimizer_name: SGD

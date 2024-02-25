@@ -41,8 +41,10 @@ class Controller:
         return local_cfg
 
     def train(self):
-        active_client_id, model_state_dict, lr = self.worker['server'].train(self.worker['client'])
-        self.worker['server'].synchronize(active_client_id, model_state_dict, lr)
+        active_client_id, model_state_dict, optimizer_state_dict, scheduler_state_dict = self.worker['server'].train(
+            self.worker['client'])
+        self.worker['server'].synchronize(active_client_id, model_state_dict,
+                                          optimizer_state_dict, scheduler_state_dict)
         return
 
     def update(self):
@@ -242,7 +244,7 @@ class Client:
         optimizer_state_dict_['param_groups'][0]['lr'] = optimizer_state_dict['param_groups'][0]['lr']
         optimizer.load_state_dict(optimizer_state_dict_)
 
-        scheduler = make_scheduler(optimizer['local'], self.cfg['optimizer'])
+        scheduler = make_scheduler(optimizer, self.cfg['optimizer'])
         scheduler.load_state_dict(scheduler_state_dict)
 
         logger = make_logger(self.cfg['logger_path'], data_name=self.cfg['data_name'])
