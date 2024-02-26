@@ -9,9 +9,9 @@ control:
   eval_period: 200
   optimizer:
     optimizer_name: SGD
-    lr: 0.1
-    momentum: 0.9
-    scheduler_name: CosineAnnealingLR
+    lr: 1
+    momentum: 0
+    scheduler_name: None
   data_mode:
     num_splits: 2
     split_mode: horiz
@@ -23,9 +23,9 @@ control:
     eval_mode: server
     optimizer:
       optimizer_name: SGD
-      lr: 0.03
+      lr: 0.01
       momentum: 0.9
-      scheduler_name: None
+      scheduler_name: CosineAnnealingLR
 # experiment
 pin_memory: True
 num_workers: 0

@@ -78,7 +78,8 @@ def runExperiment():
     controller.make_worker(dataset)
     while cfg['step'] < cfg['num_steps']:
         controller.train()
-        controller.test()
+        if cfg['step'] % cfg['eval_period'] == 0:
+            controller.test()
         controller.update()
         result = {'cfg': cfg, 'step': cfg['step'], 'data_split': data_split,
                   'model': controller.model_state_dict(),
