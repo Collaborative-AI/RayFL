@@ -6,23 +6,23 @@ control:
   batch_size: 250
   step_period: 1
   num_steps: 400
-  eval_period: 200
+  eval_period: 10
   optimizer:
     optimizer_name: SGD
     lr: 1
     momentum: 0
     scheduler_name: None
   data_mode:
-    num_splits: 2
+    num_splits: 10
     split_mode: horiz
     stat_mode: iid
   dist_mode:
     agg_mode: sync
-    active_ratio: 1.0
-    num_steps: 200
+    active_ratio: 0.2
+    num_steps: 2
     eval_mode: server
     optimizer:
-      optimizer_name: SGD
+      optimizer_name: Adam
       lr: 0.01
       momentum: 0.9
       scheduler_name: CosineAnnealingLR

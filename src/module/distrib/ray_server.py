@@ -8,7 +8,6 @@ from dataset import make_data_loader, split_dataset
 from model import make_model, make_optimizer, make_scheduler, make_batchnorm
 
 
-
 class Server:
     def __init__(self, id, dataset, data_split, model, optimizer, scheduler, logger, cfg):
         self.id = id
@@ -35,11 +34,54 @@ class Server:
                         tmp_v = v.data.new_zeros(v.size())
                         for i in range(len(active_client_id)):
                             tmp_v += weight[i] * model_state_dict[i][k]
+
                         v.grad = (v.data - tmp_v).detach()
                 self.optimizer['global'].step()
                 self.scheduler['global'].step()
-                self.optimizer['local'].load_state_dict(optimizer_state_dict[0])
+
+                #old
+                #
+                # self.optimizer['local'].load_state_dict(optimizer_state_dict[0])
+                # print(optimizer_state_dict[0])
+                # print("Here")
+
+                #new
+                merged_state = {}
+                possible_state_keys = ['momentum_buffer', 'exp_avg', 'exp_avg_sq']
+
+                local_optimizer_state_dict = self.optimizer['local'].state_dict()
+
+                for i in range(len(active_client_id)):
+                    state_dict = optimizer_state_dict[i]
+                    for param_idx, param_state in state_dict['state'].items():
+                        if param_idx not in merged_state:
+                            merged_state[param_idx] = {}
+
+                        for state_name in possible_state_keys + ['step']:
+                            if state_name in param_state:
+                                state_value = param_state[state_name]
+                                if state_name not in merged_state[param_idx]:
+
+                                    if state_name == 'step':
+                                        merged_state[param_idx][state_name] = local_optimizer_state_dict['state'].get(
+                                            param_idx, {}).get('step', torch.tensor(0.0))
+                                    else:
+                                        merged_state[param_idx][state_name] = state_value.new_zeros(
+                                            size=state_value.size())
+                                #step max or not
+                                # if state_name == 'step':
+                                #     merged_state[param_idx][state_name] = max(merged_state[param_idx][state_name],
+                                #                                               state_value)
+                                if state_name != 'step':
+                                    merged_state[param_idx][state_name] += state_value * weight[i]
+
+                optimizer_state_to_load = {'state': merged_state,
+                                           'param_groups': local_optimizer_state_dict['param_groups']}
+                self.optimizer['local'].load_state_dict(optimizer_state_to_load)
+
+
                 self.scheduler['local'].load_state_dict(scheduler_state_dict[0])
+
         return
 
     def train(self, client):
@@ -48,6 +90,7 @@ class Server:
         active_client_id = torch.randperm(len(client))[:num_active_clients]
         active_client = [client[i] for i in range(len(client)) if i in active_client_id]
         result = []
+
         for i in range(len(active_client)):
             result_i = active_client[i].train.remote(self.model.state_dict(),
                                                      self.optimizer['local'].state_dict(),
