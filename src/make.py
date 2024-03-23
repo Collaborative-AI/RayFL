@@ -69,7 +69,7 @@ def main():
         batch_size = ['250']
         step_period = ['1']
         num_steps = ['400']
-        eval_period = ['200']
+        eval_period = ['10']
         optimizer_name = ['SGD']
         lr = ['1']
         momentum = ['0']
@@ -79,7 +79,7 @@ def main():
         data_mode = ['2-horiz-iid', '2-horiz-noniid~c~2', '2-horiz-noniid~d~0.1', '2-horiz-noniid~d~0.3']
         dist_agg_mode = ['sync']
         dist_active_ratio = ['1.0']
-        dist_num_steps = ['200']
+        dist_num_steps = ['2']
         dist_eval_mode = ['server']
         dist_mode = [dist_agg_mode, dist_active_ratio, dist_num_steps, dist_eval_mode]
         dist_mode_controls = list('-'.join(x) for x in itertools.product(*dist_mode))
